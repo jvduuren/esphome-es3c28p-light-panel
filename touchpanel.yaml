@@ -51,6 +51,28 @@ substitutions:
   stair_night_from: "23"
   stair_night_to:   "7"
 
+  # ======================================================================
+  # SCHERMTEKST — alle zichtbare tekst staat hier, zodat vertalen een kwestie
+  # is van dit blok aanpassen en nergens anders in het bestand hoeven zijn.
+  #
+  # LET OP bij accenten: ESPHome bakt standaard alleen de glyphset
+  # GF_Latin_Kernel in (116 tekens), en daar ontbreken a-umlaut, o-umlaut,
+  # u-umlaut, sz en e-accent. "Kuche" zou dan een leeg vakje tonen. Zet in dat
+  # geval bij elk tekstlettertype onder font: de regel
+  #     glyphsets: [GF_Latin_Core]
+  # Die set heeft 319 tekens en dekt Duits, Frans, Spaans en Scandinavisch.
+  # ======================================================================
+  ui_title:  "VERLICHTING"
+  ui_on:     "AAN"
+  ui_off:    "UIT"
+  ui_toggle: "AAN / UIT"
+  # Even zichtbaar bij het openen van het dimpaneel, tot de lampnaam er staat.
+  ui_light:  "Lamp"
+  # Volgorde vast: zondag eerst en januari eerst, want day_of_week en month
+  # tellen in ESPHome vanaf 1 voor respectievelijk zondag en januari.
+  ui_weekdays: '"zondag", "maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag"'
+  ui_months:   '"januari", "februari", "maart", "april", "mei", "juni", "juli", "augustus", "september", "oktober", "november", "december"'
+
   # --- LCD (SPI) ---
   lcd_sck:  GPIO12
   lcd_mosi: GPIO11
@@ -424,7 +446,7 @@ binary_sensor:
       - lvgl.label.update:
           id: tile1_state
           text: !lambda |-
-            return x ? std::string("AAN") : std::string("UIT");
+            return x ? std::string("${ui_on}") : std::string("${ui_off}");
       - if:
           condition:
             lambda: 'return x;'
@@ -447,7 +469,7 @@ binary_sensor:
       - lvgl.label.update:
           id: tile2_state
           text: !lambda |-
-            return x ? std::string("AAN") : std::string("UIT");
+            return x ? std::string("${ui_on}") : std::string("${ui_off}");
       - if:
           condition:
             lambda: 'return x;'
@@ -470,7 +492,7 @@ binary_sensor:
       - lvgl.label.update:
           id: tile3_state
           text: !lambda |-
-            return x ? std::string("AAN") : std::string("UIT");
+            return x ? std::string("${ui_on}") : std::string("${ui_off}");
       - if:
           condition:
             lambda: 'return x;'
@@ -493,7 +515,7 @@ binary_sensor:
       - lvgl.label.update:
           id: tile4_state
           text: !lambda |-
-            return x ? std::string("AAN") : std::string("UIT");
+            return x ? std::string("${ui_on}") : std::string("${ui_off}");
       - if:
           condition:
             lambda: 'return x;'
@@ -516,7 +538,7 @@ binary_sensor:
       - lvgl.label.update:
           id: tile5_state
           text: !lambda |-
-            return x ? std::string("AAN") : std::string("UIT");
+            return x ? std::string("${ui_on}") : std::string("${ui_off}");
       - if:
           condition:
             lambda: 'return x;'
@@ -539,7 +561,7 @@ binary_sensor:
       - lvgl.label.update:
           id: tile6_state
           text: !lambda |-
-            return x ? std::string("AAN") : std::string("UIT");
+            return x ? std::string("${ui_on}") : std::string("${ui_off}");
       - if:
           condition:
             lambda: 'return x;'
@@ -630,11 +652,8 @@ interval:
       - lvgl.label.update:
           id: clk_date
           text: !lambda |-
-            static const char *const DAG[] = {"zondag", "maandag", "dinsdag",
-              "woensdag", "donderdag", "vrijdag", "zaterdag"};
-            static const char *const MND[] = {"januari", "februari", "maart",
-              "april", "mei", "juni", "juli", "augustus", "september",
-              "oktober", "november", "december"};
+            static const char *const DAG[] = {${ui_weekdays}};
+            static const char *const MND[] = {${ui_months}};
             auto t = id(ha_time).now();
             if (!t.is_valid()) return std::string("");
             // day_of_week telt vanaf 1 voor zondag, month vanaf 1 voor januari
@@ -683,7 +702,7 @@ script:
                   checked: true
             - lvgl.label.update:
                 id: tile1_state
-                text: "AAN"
+                text: "${ui_on}"
             - lvgl.label.update:
                 id: tile1_icon
                 text_color: 0xFFC961
@@ -694,7 +713,7 @@ script:
                   checked: false
             - lvgl.label.update:
                 id: tile1_state
-                text: "UIT"
+                text: "${ui_off}"
             - lvgl.label.update:
                 id: tile1_icon
                 text_color: 0x8A8074
@@ -708,7 +727,7 @@ script:
                   checked: true
             - lvgl.label.update:
                 id: tile2_state
-                text: "AAN"
+                text: "${ui_on}"
             - lvgl.label.update:
                 id: tile2_icon
                 text_color: 0xFFC961
@@ -719,7 +738,7 @@ script:
                   checked: false
             - lvgl.label.update:
                 id: tile2_state
-                text: "UIT"
+                text: "${ui_off}"
             - lvgl.label.update:
                 id: tile2_icon
                 text_color: 0x8A8074
@@ -733,7 +752,7 @@ script:
                   checked: true
             - lvgl.label.update:
                 id: tile3_state
-                text: "AAN"
+                text: "${ui_on}"
             - lvgl.label.update:
                 id: tile3_icon
                 text_color: 0xFFC961
@@ -744,7 +763,7 @@ script:
                   checked: false
             - lvgl.label.update:
                 id: tile3_state
-                text: "UIT"
+                text: "${ui_off}"
             - lvgl.label.update:
                 id: tile3_icon
                 text_color: 0x8A8074
@@ -758,7 +777,7 @@ script:
                   checked: true
             - lvgl.label.update:
                 id: tile4_state
-                text: "AAN"
+                text: "${ui_on}"
             - lvgl.label.update:
                 id: tile4_icon
                 text_color: 0xFFC961
@@ -769,7 +788,7 @@ script:
                   checked: false
             - lvgl.label.update:
                 id: tile4_state
-                text: "UIT"
+                text: "${ui_off}"
             - lvgl.label.update:
                 id: tile4_icon
                 text_color: 0x8A8074
@@ -783,7 +802,7 @@ script:
                   checked: true
             - lvgl.label.update:
                 id: tile5_state
-                text: "AAN"
+                text: "${ui_on}"
             - lvgl.label.update:
                 id: tile5_icon
                 text_color: 0xFFC961
@@ -794,7 +813,7 @@ script:
                   checked: false
             - lvgl.label.update:
                 id: tile5_state
-                text: "UIT"
+                text: "${ui_off}"
             - lvgl.label.update:
                 id: tile5_icon
                 text_color: 0x8A8074
@@ -808,7 +827,7 @@ script:
                   checked: true
             - lvgl.label.update:
                 id: tile6_state
-                text: "AAN"
+                text: "${ui_on}"
             - lvgl.label.update:
                 id: tile6_icon
                 text_color: 0xFFC961
@@ -819,7 +838,7 @@ script:
                   checked: false
             - lvgl.label.update:
                 id: tile6_state
-                text: "UIT"
+                text: "${ui_off}"
             - lvgl.label.update:
                 id: tile6_icon
                 text_color: 0x8A8074
@@ -875,7 +894,7 @@ lvgl:
       widgets:
         - label:
             id: hdr_title
-            text: "VERLICHTING"
+            text: "${ui_title}"
             text_font: f_header
             text_color: 0xEDE9E1
             text_letter_space: 3
@@ -941,7 +960,7 @@ lvgl:
                         y: -20
                     - label:
                         id: tile1_state
-                        text: "UIT"
+                        text: "${ui_off}"
                         text_font: f_small
                         text_letter_space: 2
                         align: BOTTOM_MID
@@ -982,7 +1001,7 @@ lvgl:
                         y: -20
                     - label:
                         id: tile2_state
-                        text: "UIT"
+                        text: "${ui_off}"
                         text_font: f_small
                         text_letter_space: 2
                         align: BOTTOM_MID
@@ -1023,7 +1042,7 @@ lvgl:
                         y: -20
                     - label:
                         id: tile3_state
-                        text: "UIT"
+                        text: "${ui_off}"
                         text_font: f_small
                         text_letter_space: 2
                         align: BOTTOM_MID
@@ -1064,7 +1083,7 @@ lvgl:
                         y: -20
                     - label:
                         id: tile4_state
-                        text: "UIT"
+                        text: "${ui_off}"
                         text_font: f_small
                         text_letter_space: 2
                         align: BOTTOM_MID
@@ -1105,7 +1124,7 @@ lvgl:
                         y: -20
                     - label:
                         id: tile5_state
-                        text: "UIT"
+                        text: "${ui_off}"
                         text_font: f_small
                         text_letter_space: 2
                         align: BOTTOM_MID
@@ -1146,7 +1165,7 @@ lvgl:
                         y: -20
                     - label:
                         id: tile6_state
-                        text: "UIT"
+                        text: "${ui_off}"
                         text_font: f_small
                         text_letter_space: 2
                         align: BOTTOM_MID
@@ -1193,7 +1212,7 @@ lvgl:
 
         - label:
             id: dim_title
-            text: "Lamp"
+            text: "${ui_light}"
             text_font: f_header
             text_color: 0xEDE9E1
             text_letter_space: 2
@@ -1294,7 +1313,7 @@ lvgl:
               # elkaar heen: LEFT_MID en RIGHT_MID overlappen zodra de tekst
               # breder is dan de helft van de knop.
               - label:
-                  text: "AAN / UIT"
+                  text: "${ui_toggle}"
                   text_font: f_tile
                   text_letter_space: 2
                   align: CENTER

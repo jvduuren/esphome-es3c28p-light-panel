@@ -122,6 +122,50 @@ returns 0 and trips the error branch. The driver carries on and touch works.
 - **Night assist**: waking the panel between 23:00 and 07:00 turns on the stair
   light if it is off — no hunting for a button half asleep.
 
+## Translating
+
+Every string the panel shows is a substitution at the top of
+[`touchpanel.yaml`](touchpanel.yaml). Nothing user-visible is hardcoded further
+down, so translating means editing one block:
+
+```yaml
+  ui_title:  "VERLICHTING"     # header
+  ui_on:     "AAN"             # tile state when the light is on
+  ui_off:    "UIT"
+  ui_toggle: "AAN / UIT"       # button on the dimming page
+  ui_light:  "Lamp"            # placeholder until the light name is filled in
+  ui_weekdays: '"zondag", "maandag", ...'   # Sunday first
+  ui_months:   '"januari", "februari", ...' # January first
+```
+
+Weekday and month order is fixed: ESPHome's `day_of_week` counts from 1 for
+Sunday and `month` from 1 for January.
+
+**There is no automatic language detection.** Home Assistant does not expose its
+UI language as an entity and ESPHome has no API for it, so there is nothing to
+query. Locale-aware `strftime` is not an option either — ESP-IDF's newlib has no
+usable locale support, so `%A` and `%B` would give you English at best. Hence the
+explicit lists.
+
+### Accented characters need a wider glyph set
+
+By default ESPHome only embeds the `GF_Latin_Kernel` glyph set — 116 characters,
+which does **not** include `ä ö ü ß é à ñ å ø`. A German "Küche" or a French
+"Salle à manger" would render with blanks, and you would only find out on the
+device.
+
+If your language needs them, add this to each text font under `font:`:
+
+```yaml
+    glyphsets: [GF_Latin_Core]
+```
+
+That set has 319 characters and covers German, French, Spanish and the Nordic
+languages. It costs some flash, which is why it is not on by default — the
+supplied config is Dutch and does not need it.
+
+The icon fonts do not need this; they only carry a couple of explicit glyphs.
+
 ## Setup
 
 ```bash
