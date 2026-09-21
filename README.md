@@ -9,6 +9,11 @@ show up on real hardware. Everything below was verified on a physical device,
 not inferred from datasheets. If you own this board, the
 [Hardware notes](#hardware-notes) section is probably why you are here.
 
+| | |
+|---|---|
+| ![Light grid with one light on](docs/panel.png) | ![Flip-clock screensaver](docs/clock.png) |
+| Six lights, one per tile, grouped by room per column. A light that is on gets a warm gradient and a **gold** drop shadow instead of a black one, so the tile reads as emitting light rather than floating above the background. | The screensaver, after 30 s idle. The seam runs *over* the digits rather than behind them — that is what makes it read as a split-flap instead of two boxes with numbers in them. |
+
 ## The board
 
 | | |
