@@ -1,0 +1,213 @@
+# LCDWIKI ES3C28P — 2.8" IPS ESP32-S3 display module
+#   MCU    : ESP32-S3-WROOM-1 N16R8 (16 MB flash, 8 MB octal PSRAM)
+#   LCD    : ILI9341V, 240x320, 4-wire SPI
+#   Touch  : FT6336G capacitive, I2C
+#   Extras : MicroSD (SDIO), WS2812B RGB LED
+#
+# Purpose of this file: BRING-UP. Light the panel, prove the wiring, and get
+# touch coordinates into the log so rotation/mirroring can be pinned down.
+# Build the real UI only after this passes.
+
+substitutions:
+  device_name: touchpanel   # diagnostische config - zelfde bord, niet samen met touchpanel.yaml flashen
+  friendly_name: "Touch Panel"
+
+  # --- LCD (SPI) -----------------------------------------------------------
+  lcd_sck:  GPIO12
+  lcd_mosi: GPIO11
+  lcd_miso: GPIO13
+  lcd_cs:   GPIO10
+  lcd_dc:   GPIO46     # strapping pin (ROM msg) — safe as output after boot
+  lcd_bl:   GPIO45     # strapping pin (VDD_SPI) — must stay low at boot
+  # LCD reset is tied to the ESP32-S3 RST line, not a GPIO -> no reset_pin below.
+
+  # --- Touch (I2C) ---------------------------------------------------------
+  ctp_sda: GPIO16
+  ctp_scl: GPIO15
+  ctp_int: GPIO17
+  ctp_rst: GPIO18
+
+  # --- Misc ----------------------------------------------------------------
+  rgb_led: GPIO42      # WS2812B
+  # MicroSD is on SDIO: CLK=38 CMD=40 D0=39 D1=41 D2=48 D3=47 (unused here)
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+
+esp32:
+  board: esp32-s3-devkitc-1
+  flash_size: 16MB
+  framework:
+    type: esp-idf
+
+# 8 MB octal PSRAM. The 240x320 16-bit framebuffer is ~150 kB and will not fit
+# in internal RAM alongside wifi — this block is what makes the display work.
+psram:
+  mode: octal
+  speed: 80MHz
+
+logger:
+  level: DEBUG
+  # ESPHome already defaults to hardware_uart: USB_SERIAL_JTAG on this S3 target,
+  # which matches how the Type-C port enumerates (generic USB serial, no CH340/
+  # CP210x bridge). Only if logs stay silent would you need: hardware_uart: UART0
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+    # Bare `encryption:` inherits the api encryption key, which authenticates
+    # any uploader holding it. Cheaper than a password (~3.5 kB flash + RAM).
+    encryption:
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "${friendly_name} Setup"
+    password: !secret ap_password
+
+captive_portal:
+
+# ---------------------------------------------------------------------------
+# Buses
+# ---------------------------------------------------------------------------
+spi:
+  clk_pin: ${lcd_sck}
+  mosi_pin: ${lcd_mosi}
+  miso_pin: ${lcd_miso}
+
+i2c:
+  sda: ${ctp_sda}
+  scl: ${ctp_scl}
+  frequency: 400kHz
+  scan: true          # logs every device found — FT6336G should appear at 0x38
+
+# ---------------------------------------------------------------------------
+# Backlight — dimmable, forced on at boot so a black screen means a real fault
+# ---------------------------------------------------------------------------
+output:
+  - platform: ledc
+    pin:
+      number: ${lcd_bl}
+      ignore_strapping_warning: true   # board wires the backlight here by design
+    id: backlight_output
+    frequency: 20000Hz
+
+light:
+  - platform: monochromatic
+    output: backlight_output
+    name: "Backlight"
+    id: backlight
+    restore_mode: ALWAYS_ON
+
+  # Status LED: proves the firmware is alive even if the panel stays dark.
+  - platform: esp32_rmt_led_strip
+    name: "Status LED"
+    id: status_led
+    pin: ${rgb_led}
+    num_leds: 1
+    chipset: WS2812
+    channel_colors: GRB
+    restore_mode: ALWAYS_OFF
+
+# ---------------------------------------------------------------------------
+# Display
+# ---------------------------------------------------------------------------
+font:
+  - file: "gfonts://Roboto"
+    id: font_small
+    size: 16
+
+globals:
+  - id: touch_x
+    type: int
+    initial_value: '-1'
+  - id: touch_y
+    type: int
+    initial_value: '-1'
+
+display:
+  - platform: ili9xxx
+    model: ILI9341
+    id: lcd
+    cs_pin: ${lcd_cs}
+    dc_pin:
+      number: ${lcd_dc}
+      ignore_strapping_warning: true   # board wires DC here by design
+    # no reset_pin — LCD reset is wired to the module's RST line
+    dimensions:
+      width: 240
+      height: 320
+    # All three verified on hardware 2026-09-20 via the corner-key test below:
+    # blocks landed in the right corners, and read as red/green/blue/yellow
+    # (wrong invert_colors would show cyan/magenta/yellow; wrong color_order
+    # would swap the red and blue corners).
+    rotation: 0
+    invert_colors: true
+    color_order: bgr
+    data_rate: 40MHz
+    update_interval: 200ms
+    lambda: |-
+      it.fill(Color::BLACK);
+
+      // Corner keys — identify rotation, mirroring and color in one glance.
+      // Correct (and confirmed on this panel): RED top-left, GREEN top-right,
+      //                                        BLUE bottom-left, YELLOW bottom-right.
+      it.filled_rectangle(0,   0,   30, 30, Color(255, 0,   0));
+      it.filled_rectangle(210, 0,   30, 30, Color(0,   255, 0));
+      it.filled_rectangle(0,   290, 30, 30, Color(0,   0,   255));
+      it.filled_rectangle(210, 290, 30, 30, Color(255, 255, 0));
+
+      // 1px border proves no rows/columns are being clipped by an offset.
+      it.rectangle(0, 0, 240, 320, Color::WHITE);
+
+      it.printf(120, 130, id(font_small), Color::WHITE, TextAlign::CENTER, "ES3C28P");
+      it.printf(120, 155, id(font_small), Color::WHITE, TextAlign::CENTER, "240x320 ILI9341V");
+
+      if (id(touch_x) >= 0) {
+        it.printf(120, 190, id(font_small), Color(0, 255, 255), TextAlign::CENTER,
+                  "touch %d,%d", id(touch_x), id(touch_y));
+        it.filled_circle(id(touch_x), id(touch_y), 5, Color(255, 0, 255));
+      } else {
+        it.printf(120, 190, id(font_small), Color(128, 128, 128), TextAlign::CENTER,
+                  "touch the screen");
+      }
+
+# ---------------------------------------------------------------------------
+# Touch
+# ---------------------------------------------------------------------------
+touchscreen:
+  - platform: ft63x6
+    id: ctp
+    display: lcd
+    interrupt_pin: ${ctp_int}
+    reset_pin: ${ctp_rst}
+    # No transform and no calibration needed, both verified on hardware:
+    #   * the FT6336G reports native 240x320 coords (raw == scaled), so the
+    #     driver's default X [0,240] / Y [0,320] is already correct;
+    #   * the touch marker lands under the finger, so no mirroring is required.
+    on_touch:
+      - lambda: |-
+          id(touch_x) = touch.x;
+          id(touch_y) = touch.y;
+          ESP_LOGI("bringup", "touch  x=%d y=%d   raw x=%d y=%d",
+                   touch.x, touch.y, touch.x_raw, touch.y_raw);
+
+# ---------------------------------------------------------------------------
+# Diagnostics
+# ---------------------------------------------------------------------------
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: "IP Address"
+
+sensor:
+  - platform: wifi_signal
+    name: "WiFi Signal"
+    update_interval: 60s
+  - platform: uptime
+    name: "Uptime"

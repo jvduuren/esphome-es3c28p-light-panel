@@ -1,0 +1,1353 @@
+# LCDWIKI ES3C28P — 2.8" IPS ESP32-S3 display module
+#   MCU   : ESP32-S3-WROOM-1 N16R8 (16 MB flash, 8 MB octal PSRAM)
+#   LCD   : ILI9341V, 240x320, 4-wire SPI
+#   Touch : FT6336G capacitive, I2C 0x38
+#   Audio : ES8311 codec op I2C 0x18 (aanwezig, ongebruikt)
+#
+# Lichtbedieningspaneel, landscape 320x240: 6 lampen in een 3x2 raster,
+# per kolom gegroepeerd op ruimte.
+#   korte tik           -> lamp aan/uit
+#   lang druk           -> dimpaneel voor die ene lamp
+#   30 s stil           -> flip-klok als screensaver, verlichting naar 25%
+#   aanraking daarna    -> terug naar het raster op volle helderheid
+#
+# De diagnostische bring-up config staat in bringup.yaml: die toont
+# hoekblokjes en touch-coordinaten, handig als er ooit iets aan de
+# bedrading of orientatie lijkt te mankeren.
+
+substitutions:
+  device_name: touchpanel
+  friendly_name: "Touch Panel"
+
+  # ======================================================================
+  # DE 6 LAMPEN — vul hier je Home Assistant entity_id's in.
+  # Dit is het enige wat je hoeft aan te passen om andere lampen te kiezen.
+  # Namen kort houden: er past ongeveer 12 tekens op een tegel.
+  # Volgorde is links-naar-rechts, rij voor rij; 1+2 bovenaan, 5+6 onderaan.
+  # Nu gegroepeerd per ruimte: woonkamer / keuken / overig.
+  # ======================================================================
+  light1_entity: light.woonkamer
+  light1_name:   "Woonkamer"
+  light2_entity: light.lamp_eettafel
+  light2_name:   "Eettafel"
+  light3_entity: light.keuken
+  light3_name:   "Keuken"
+  light4_entity: light.lampen_fornuis
+  light4_name:   "Fornuis"
+  light5_entity: light.lampen_gang
+  light5_name:   "Gang"
+  light6_entity: light.lampen_kantoor
+  light6_name:   "Kantoor"
+
+  # ======================================================================
+  # TRAPVERLICHTING — gaat 's nachts vanzelf aan zodra je het paneel wekt.
+  # Bewust los gedefinieerd en niet als "tegel 5": nu is dat toevallig
+  # dezelfde lamp als Gang, maar als de tegelindeling ooit verandert zou
+  # deze functie anders stilzwijgend de verkeerde lamp gaan schakelen.
+  # Dat merk je dan pas midden in de nacht.
+  # Uren zijn in 24-uursnotatie; het venster loopt over middernacht heen.
+  # ======================================================================
+  stair_entity:    light.lampen_gang
+  stair_night_from: "23"
+  stair_night_to:   "7"
+
+  # --- LCD (SPI) ---
+  lcd_sck:  GPIO12
+  lcd_mosi: GPIO11
+  lcd_miso: GPIO13
+  lcd_cs:   GPIO10
+  lcd_dc:   GPIO46     # strapping pin (ROM msg) — veilig als uitgang na boot
+  lcd_bl:   GPIO45     # strapping pin (VDD_SPI) — moet laag zijn bij boot
+  # LCD-reset hangt aan de RST-lijn van de module, niet aan een GPIO.
+
+  # --- Touch (I2C) ---
+  ctp_sda: GPIO16
+  ctp_scl: GPIO15
+  ctp_int: GPIO17
+  ctp_rst: GPIO18
+
+  rgb_led: GPIO42
+
+# ======================================================================
+# Palet — warm antraciet met goud. Bewust géén blauwtinten: die vechten met
+# het gouden accent en maken het geheel koel en technisch.
+#   0x0A0B0D  achtergrond, bijna zwart
+#   0x322E29  tegel uit, bovenrand (lichtst)
+#   0x0C0B0A  tegel uit, onderrand (valt weg in de achtergrond)
+#   0x46413A  randlijn rust
+#   0x574121  tegel aan, bovenrand
+#   0x241909  tegel aan, onderrand
+#   0xC8A45C  goud
+#   0xE0B96B  goud rand
+#   0xFFC961  icoon aan
+#   0x8A8074  icoon uit, warm grijs
+#   0xEDE9E1  tekst warm wit
+#   0x544D44  tekst gedempt
+# ======================================================================
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+
+esp32:
+  board: esp32-s3-devkitc-1
+  flash_size: 16MB
+  framework:
+    type: esp-idf
+
+psram:
+  mode: octal
+  speed: 80MHz
+
+logger:
+  level: WARN
+  # ESPHome kiest hier al vanzelf USB_SERIAL_JTAG, passend bij hoe de Type-C
+  # poort zich meldt (generiek USB serieel, geen CH340/CP210x bridge).
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+  on_client_connected:
+    - script.execute: sync_tiles
+
+ota:
+  - platform: esphome
+    encryption:
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "${friendly_name} Setup"
+    password: !secret ap_password
+
+captive_portal:
+
+time:
+  - platform: homeassistant
+    id: ha_time
+
+# ======================================================================
+# Bussen en hardware
+# ======================================================================
+spi:
+  clk_pin: ${lcd_sck}
+  mosi_pin: ${lcd_mosi}
+  miso_pin: ${lcd_miso}
+
+i2c:
+  sda: ${ctp_sda}
+  scl: ${ctp_scl}
+  frequency: 400kHz
+
+output:
+  - platform: ledc
+    pin:
+      number: ${lcd_bl}
+      ignore_strapping_warning: true
+    id: backlight_output
+    frequency: 20000Hz
+
+light:
+  - platform: monochromatic
+    output: backlight_output
+    name: "Backlight"
+    id: backlight
+    restore_mode: ALWAYS_ON
+    # Standaard past dit component gammacorrectie 2.8 toe, bedoeld om dimmen
+    # voor het oog lineair te laten voelen bij verlichting. Voor een
+    # achtergrondverlichting werkt dat averechts: 12% werd zo 0.12^2.8, oftewel
+    # 0,26% duty, en dus vrijwel niets. Met 1.0 betekent een percentage
+    # precies dat percentage.
+    gamma_correct: 1.0
+
+  - platform: esp32_rmt_led_strip
+    name: "Status LED"
+    id: status_led
+    pin: ${rgb_led}
+    num_leds: 1
+    chipset: WS2812
+    channel_colors: GRB
+    restore_mode: ALWAYS_OFF
+
+display:
+  - platform: ili9xxx
+    model: ILI9341
+    id: lcd
+    cs_pin: ${lcd_cs}
+    dc_pin:
+      number: ${lcd_dc}
+      ignore_strapping_warning: true
+    dimensions:
+      width: 320
+      height: 240
+    # Landscape via de MADCTL van de driver, niet via rotation:. Bij een
+    # rotation ongelijk aan 0 valt ili9xxx terug op een trage tekenroute,
+    # wat juist bij LVGL zwaar telt. transform: sluit rotation: uit.
+    # LET OP: transform overschrijft de modelstandaard volledig, dus de
+    # mirror_x die het paneel in portret nodig had staat hier expliciet.
+    transform:
+      swap_xy: true
+      mirror_x: false
+      mirror_y: false
+    # invert_colors en color_order zijn geverifieerd op hardware 2026-09-20.
+    invert_colors: true
+    color_order: bgr
+    # Getest op hardware 2026-09-21. 80 MHz geeft korrelige letters op deze
+    # print: de flanken halen het niet en er kantelen bits in de pixeldata.
+    # Tussenliggende waarden bestaan niet — de ESP32-S3 deelt 80 MHz door een
+    # geheel getal, dus de opties zijn 80 / 40 / 26,7 / 20. ESPHome weigert
+    # 60MHz dan ook met "not available for this chip".
+    # 40 MHz is daarmee het haalbare maximum: ~31 ms per volledig scherm.
+    # Dat is meteen de bovengrens voor hoe vloeiend een schermvullende
+    # animatie hier ooit kan worden.
+    data_rate: 40MHz
+    auto_clear_enabled: false
+
+touchscreen:
+  - platform: ft63x6
+    id: ctp
+    display: lcd
+    interrupt_pin: ${ctp_int}
+    reset_pin: ${ctp_rst}
+    # De FT6336G rapporteert altijd in het native portretvlak van het paneel.
+    # De touchscreen-component volgt de displaydraai NIET vanzelf: die gebruikt
+    # zijn eigen transform en schaalt tegen get_native_width(). Dus dezelfde
+    # swap hier, anders landen tikken op de verkeerde plek.
+    transform:
+      swap_xy: true
+      mirror_x: false
+      # Gemeten op hardware 2026-09-21: de Y-as komt omgekeerd binnen. Een tik
+      # op de aan/uit-knop (y 152-202) meldde y=59-77, oftewel 240 minus de
+      # werkelijke waarde. X klopte wel.
+      mirror_y: true
+    # Screensaver wegtikken. Dit MOET op on_release en niet op on_touch:
+    # on_touch vuurt voordat LVGL de aanraking verwerkt, dus een paginawissel
+    # op dat moment laat LVGL de nog ingedrukte vinger alsnog op het
+    # startscherm aflezen, waar hij een tegel indrukt. Dat gebeurde ook echt.
+    # Bij on_release is de vinger al los en kan dat niet.
+    #
+    # Een onzichtbare knop op de klokpagina zelf leek netter, maar werkte op
+    # deze hardware niet: het paneel reageerde dan nergens op.
+    on_release:
+      - if:
+          condition:
+            lvgl.page.is_showing: page_clock
+          then:
+            # Helderheid vlot omhoog; de paginawissel zelf is direct.
+            - light.turn_on:
+                id: backlight
+                brightness: 100%
+                transition_length: 400ms
+            - lvgl.page.show: page_home
+
+            # 's Nachts meteen de trapverlichting aan, zodat je met een
+            # slaperig hoofd niet ook nog een knop hoeft te zoeken. Alleen
+            # als hij uit staat: brandt hij al, dan laten we de bestaande
+            # stand met rust.
+            - if:
+                condition:
+                  and:
+                    - lambda: |-
+                        auto t = id(ha_time).now();
+                        if (!t.is_valid()) return false;   // geen tijd, geen aanname
+                        // Venster loopt over middernacht, dus OF in plaats van EN
+                        return t.hour >= ${stair_night_from} || t.hour < ${stair_night_to};
+                    - lambda: 'return !id(stair_on).state;'
+                then:
+                  - homeassistant.action:
+                      action: light.turn_on
+                      data:
+                        entity_id: ${stair_entity}
+
+# ======================================================================
+# Lettertypen
+# ======================================================================
+font:
+  - file: "gfonts://Montserrat@300"
+    id: f_header
+    size: 17
+    bpp: 4
+  - file: "gfonts://Montserrat@500"
+    id: f_tile
+    size: 13
+    bpp: 4
+  - file: "gfonts://Montserrat@400"
+    id: f_small
+    size: 10
+    bpp: 4
+  - file: "gfonts://Montserrat@200"
+    id: f_huge
+    size: 44
+    bpp: 4
+  - file: "gfonts://Montserrat@200"
+    id: f_flip
+    size: 86
+    bpp: 4
+    # Alleen cijfers. Op 86 px zou de volledige tekenset onnodig veel
+    # flash kosten; de flip-klok toont niets anders dan 0 t/m 9.
+    glyphs: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+  - file: "https://github.com/Templarian/MaterialDesign-Webfont/raw/master/fonts/materialdesignicons-webfont.ttf"
+    id: f_icon
+    size: 38
+    bpp: 4
+    glyphs: ["\U000F0335"]                 # mdi-lightbulb
+  - file: "https://github.com/Templarian/MaterialDesign-Webfont/raw/master/fonts/materialdesignicons-webfont.ttf"
+    id: f_icon_sm
+    size: 22
+    bpp: 4
+    glyphs: ["\U000F0141"]                 # mdi-chevron-left
+
+globals:
+  - id: active_entity
+    type: std::string
+    initial_value: '""'
+  - id: ui_updating          # voorkomt dat het vullen van de dimring meteen
+    type: bool               # als bediening telt
+    initial_value: 'false'
+
+# ======================================================================
+# Herbruikbare tegel-opmaak. Sleutels die met een punt beginnen negeert
+# ESPHome, dus dit blok bestaat alleen om met een anchor naar te verwijzen.
+# ======================================================================
+.tile_look: &tile_look
+  # Geen width/height 100%: in LVGL is een percentage relatief aan de OUDER,
+  # niet aan de rastercel. Elke tegel werd daardoor zo groot als de hele
+  # rastercontainer. STRETCH laat de cel de maat bepalen.
+  grid_cell_x_align: STRETCH
+  grid_cell_y_align: STRETCH
+  radius: 14
+  pad_all: 2
+
+  # Reliëf berust op twee dingen. Het verticale verloop loopt van licht
+  # bovenaan naar donker onderaan, wat het oog leest als licht van boven op
+  # een bollend vlak. De slagschaduw eronder tilt de tegel van de
+  # achtergrond los. Samen geven ze diepte zonder een enkele afbeelding.
+  bg_opa: COVER
+  # Warm antraciet, geen staalblauw. Blauwe tegels vechten met het gouden
+  # accent en maken het geheel koel en technisch; een warme grijstint laat
+  # het goud juist als goud lezen.
+  bg_color: 0x322E29          # bovenrand, lichtst
+  bg_grad_color: 0x0C0B0A     # onderrand, bijna zwart
+  bg_grad_dir: VER
+  clip_corner: true
+  border_width: 1
+  border_color: 0x46413A
+  shadow_color: 0x000000
+  shadow_opa: 60%
+  shadow_width: 12
+  shadow_offset_y: 5
+  # Bewust dof: hoe doffer de uit-stand, hoe harder het goud straks opvalt.
+  text_color: 0x544D44
+
+  checked:
+    # Lamp aan: warm verloop, en een gouden schaduw in plaats van een zwarte.
+    # Daardoor lijkt de tegel zelf licht te geven in plaats van te zweven.
+    bg_color: 0x574121
+    bg_grad_color: 0x241909
+    border_color: 0xE0B96B
+    text_color: 0xFFD98A
+    shadow_color: 0xD9A94E
+    shadow_opa: 65%
+    shadow_width: 20
+    shadow_offset_y: 0
+    shadow_spread: 2
+
+  pressed:
+    # Verloop omgekeerd en schaduw weg: de tegel lijkt in te zakken.
+    bg_color: 0x0D1015
+    bg_grad_color: 0x1B2028
+    shadow_opa: 0%
+
+# Lichtlijn langs de bovenrand. Op een bijna zwarte achtergrond is een zwarte
+# slagschaduw onzichtbaar, dus diepte moet uit licht komen, niet uit donker.
+# Deze dunne heldere lijn leest het oog als een opstaande rand die licht vangt.
+# clickable: false, anders zou hij tikken opvangen die voor de tegel bedoeld zijn.
+# Kaart van de flip-klok. Het verticale verloop maakt de bovenhelft lichter
+# dan de onderhelft, zoals bij een echte splitflap waar het bovenblad het
+# licht vangt.
+.flip_card: &flip_card
+  y: 42
+  width: 126
+  height: 140
+  radius: 10
+  clip_corner: true
+  pad_all: 0
+  bg_opa: COVER
+  bg_color: 0x33302B
+  bg_grad_color: 0x131211
+  bg_grad_dir: VER
+  border_width: 1
+  border_color: 0x45403A
+  shadow_color: 0x000000
+  shadow_opa: 80%
+  shadow_width: 18
+  shadow_offset_y: 6
+
+# De naad over het midden. Die hoort OVER het cijfer te liggen, niet
+# eronder: bij een echte flip-klok loopt de vouw dwars door het cijfer.
+# In LVGL tekent een later kind over een eerder kind, dus dit blok komt
+# in de YAML ná het cijferlabel.
+.flip_seam: &flip_seam
+  align: CENTER
+  width: 100%
+  height: 2
+  radius: 0
+  border_width: 0
+  bg_color: 0x000000
+  bg_opa: 75%
+  clickable: false
+
+.tile_bevel: &tile_bevel
+  align: TOP_MID
+  y: 2
+  width: 72%
+  height: 1
+  radius: 0
+  border_width: 0
+  bg_color: 0xFFFFFF
+  bg_opa: 22%
+  clickable: false
+
+# ======================================================================
+# Home Assistant koppeling — aan/uit toestand en helderheid per lamp
+# ======================================================================
+binary_sensor:
+  - platform: homeassistant
+    id: l1_on
+    entity_id: ${light1_entity}
+    on_state:
+      - lvgl.widget.update:
+          id: tile1
+          state:
+            checked: !lambda return x;
+      - lvgl.label.update:
+          id: tile1_state
+          text: !lambda |-
+            return x ? std::string("AAN") : std::string("UIT");
+      - if:
+          condition:
+            lambda: 'return x;'
+          then:
+            - lvgl.label.update:
+                id: tile1_icon
+                text_color: 0xFFC961
+          else:
+            - lvgl.label.update:
+                id: tile1_icon
+                text_color: 0x8A8074
+  - platform: homeassistant
+    id: l2_on
+    entity_id: ${light2_entity}
+    on_state:
+      - lvgl.widget.update:
+          id: tile2
+          state:
+            checked: !lambda return x;
+      - lvgl.label.update:
+          id: tile2_state
+          text: !lambda |-
+            return x ? std::string("AAN") : std::string("UIT");
+      - if:
+          condition:
+            lambda: 'return x;'
+          then:
+            - lvgl.label.update:
+                id: tile2_icon
+                text_color: 0xFFC961
+          else:
+            - lvgl.label.update:
+                id: tile2_icon
+                text_color: 0x8A8074
+  - platform: homeassistant
+    id: l3_on
+    entity_id: ${light3_entity}
+    on_state:
+      - lvgl.widget.update:
+          id: tile3
+          state:
+            checked: !lambda return x;
+      - lvgl.label.update:
+          id: tile3_state
+          text: !lambda |-
+            return x ? std::string("AAN") : std::string("UIT");
+      - if:
+          condition:
+            lambda: 'return x;'
+          then:
+            - lvgl.label.update:
+                id: tile3_icon
+                text_color: 0xFFC961
+          else:
+            - lvgl.label.update:
+                id: tile3_icon
+                text_color: 0x8A8074
+  - platform: homeassistant
+    id: l4_on
+    entity_id: ${light4_entity}
+    on_state:
+      - lvgl.widget.update:
+          id: tile4
+          state:
+            checked: !lambda return x;
+      - lvgl.label.update:
+          id: tile4_state
+          text: !lambda |-
+            return x ? std::string("AAN") : std::string("UIT");
+      - if:
+          condition:
+            lambda: 'return x;'
+          then:
+            - lvgl.label.update:
+                id: tile4_icon
+                text_color: 0xFFC961
+          else:
+            - lvgl.label.update:
+                id: tile4_icon
+                text_color: 0x8A8074
+  - platform: homeassistant
+    id: l5_on
+    entity_id: ${light5_entity}
+    on_state:
+      - lvgl.widget.update:
+          id: tile5
+          state:
+            checked: !lambda return x;
+      - lvgl.label.update:
+          id: tile5_state
+          text: !lambda |-
+            return x ? std::string("AAN") : std::string("UIT");
+      - if:
+          condition:
+            lambda: 'return x;'
+          then:
+            - lvgl.label.update:
+                id: tile5_icon
+                text_color: 0xFFC961
+          else:
+            - lvgl.label.update:
+                id: tile5_icon
+                text_color: 0x8A8074
+  - platform: homeassistant
+    id: l6_on
+    entity_id: ${light6_entity}
+    on_state:
+      - lvgl.widget.update:
+          id: tile6
+          state:
+            checked: !lambda return x;
+      - lvgl.label.update:
+          id: tile6_state
+          text: !lambda |-
+            return x ? std::string("AAN") : std::string("UIT");
+      - if:
+          condition:
+            lambda: 'return x;'
+          then:
+            - lvgl.label.update:
+                id: tile6_icon
+                text_color: 0xFFC961
+          else:
+            - lvgl.label.update:
+                id: tile6_icon
+                text_color: 0x8A8074
+
+  # Aparte uitlezing van de trapverlichting, los van welke tegel die lamp
+  # toevallig heeft. Nodig om te weten of hij al brandt: dan laten we hem
+  # met rust in plaats van er 's nachts nog een commando overheen te sturen.
+  - platform: homeassistant
+    id: stair_on
+    entity_id: ${stair_entity}
+
+sensor:
+  - platform: homeassistant
+    id: l1_bri
+    entity_id: ${light1_entity}
+    attribute: brightness
+  - platform: homeassistant
+    id: l2_bri
+    entity_id: ${light2_entity}
+    attribute: brightness
+  - platform: homeassistant
+    id: l3_bri
+    entity_id: ${light3_entity}
+    attribute: brightness
+  - platform: homeassistant
+    id: l4_bri
+    entity_id: ${light4_entity}
+    attribute: brightness
+  - platform: homeassistant
+    id: l5_bri
+    entity_id: ${light5_entity}
+    attribute: brightness
+  - platform: homeassistant
+    id: l6_bri
+    entity_id: ${light6_entity}
+    attribute: brightness
+
+  - platform: wifi_signal
+    name: "WiFi Signal"
+    update_interval: 60s
+  - platform: uptime
+    name: "Uptime"
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: "IP Address"
+
+# Klok in de kop, elke 10 s bijgewerkt
+interval:
+  - interval: 10s
+    then:
+      - lvgl.label.update:
+          id: hdr_clock
+          text: !lambda |-
+            auto t = id(ha_time).now();
+            if (!t.is_valid()) return std::string("--:--");
+            char buf[8];
+            snprintf(buf, sizeof(buf), "%02d:%02d", t.hour, t.minute);
+            return std::string(buf);
+
+      # Flip-klok: uren en minuten staan op losse kaarten, dus ook als
+      # losse labels.
+      - lvgl.label.update:
+          id: clk_hh
+          text: !lambda |-
+            auto t = id(ha_time).now();
+            if (!t.is_valid()) return std::string("--");
+            char buf[4];
+            snprintf(buf, sizeof(buf), "%02d", t.hour);
+            return std::string(buf);
+      - lvgl.label.update:
+          id: clk_mm
+          text: !lambda |-
+            auto t = id(ha_time).now();
+            if (!t.is_valid()) return std::string("--");
+            char buf[4];
+            snprintf(buf, sizeof(buf), "%02d", t.minute);
+            return std::string(buf);
+      - lvgl.label.update:
+          id: clk_date
+          text: !lambda |-
+            static const char *const DAG[] = {"zondag", "maandag", "dinsdag",
+              "woensdag", "donderdag", "vrijdag", "zaterdag"};
+            static const char *const MND[] = {"januari", "februari", "maart",
+              "april", "mei", "juni", "juli", "augustus", "september",
+              "oktober", "november", "december"};
+            auto t = id(ha_time).now();
+            if (!t.is_valid()) return std::string("");
+            // day_of_week telt vanaf 1 voor zondag, month vanaf 1 voor januari
+            char buf[48];
+            snprintf(buf, sizeof(buf), "%s %d %s",
+                     DAG[t.day_of_week - 1], t.day_of_month, MND[t.month - 1]);
+            return std::string(buf);
+
+script:
+  # Vult de dimring met de huidige helderheid en opent het paneel. De vlag
+  # voorkomt dat het zetten van die waarde meteen als bediening telt.
+  - id: open_dim
+    mode: restart
+    parameters:
+      bri: float
+    then:
+      - lambda: 'id(ui_updating) = true;'
+      - lvgl.arc.update:
+          id: dim_arc
+          value: !lambda |-
+            if (std::isnan(bri)) return 1;
+            int pct = (int) roundf(bri * 100.0f / 255.0f);
+            return pct < 1 ? 1 : (pct > 100 ? 100 : pct);
+      - lvgl.page.show: page_dim
+      - delay: 150ms
+      - lambda: 'id(ui_updating) = false;'
+
+  # De tegels worden normaal bijgewerkt zodra Home Assistant een status stuurt.
+  # Bij het opstarten is dat niet betrouwbaar: de eerste ronde statussen komt
+  # binnen rond het moment dat de verbinding wordt opgezet, en een lamp die dan
+  # al aan staat bleef als UIT op het scherm staan. Dit script leest de op dat
+  # moment bekende status van alle zes lampen uit en dwingt de tegels in de
+  # juiste stand. Het draait bij elke nieuwe API-verbinding, dus ook na een
+  # herstart van Home Assistant zelf.
+  - id: sync_tiles
+    mode: restart
+    then:
+      - delay: 3s      # ruim genoeg voor de eerste statusronde na verbinden
+      - if:
+          condition:
+            lambda: 'return id(l1_on).state;'
+          then:
+            - lvgl.widget.update:
+                id: tile1
+                state:
+                  checked: true
+            - lvgl.label.update:
+                id: tile1_state
+                text: "AAN"
+            - lvgl.label.update:
+                id: tile1_icon
+                text_color: 0xFFC961
+          else:
+            - lvgl.widget.update:
+                id: tile1
+                state:
+                  checked: false
+            - lvgl.label.update:
+                id: tile1_state
+                text: "UIT"
+            - lvgl.label.update:
+                id: tile1_icon
+                text_color: 0x8A8074
+      - if:
+          condition:
+            lambda: 'return id(l2_on).state;'
+          then:
+            - lvgl.widget.update:
+                id: tile2
+                state:
+                  checked: true
+            - lvgl.label.update:
+                id: tile2_state
+                text: "AAN"
+            - lvgl.label.update:
+                id: tile2_icon
+                text_color: 0xFFC961
+          else:
+            - lvgl.widget.update:
+                id: tile2
+                state:
+                  checked: false
+            - lvgl.label.update:
+                id: tile2_state
+                text: "UIT"
+            - lvgl.label.update:
+                id: tile2_icon
+                text_color: 0x8A8074
+      - if:
+          condition:
+            lambda: 'return id(l3_on).state;'
+          then:
+            - lvgl.widget.update:
+                id: tile3
+                state:
+                  checked: true
+            - lvgl.label.update:
+                id: tile3_state
+                text: "AAN"
+            - lvgl.label.update:
+                id: tile3_icon
+                text_color: 0xFFC961
+          else:
+            - lvgl.widget.update:
+                id: tile3
+                state:
+                  checked: false
+            - lvgl.label.update:
+                id: tile3_state
+                text: "UIT"
+            - lvgl.label.update:
+                id: tile3_icon
+                text_color: 0x8A8074
+      - if:
+          condition:
+            lambda: 'return id(l4_on).state;'
+          then:
+            - lvgl.widget.update:
+                id: tile4
+                state:
+                  checked: true
+            - lvgl.label.update:
+                id: tile4_state
+                text: "AAN"
+            - lvgl.label.update:
+                id: tile4_icon
+                text_color: 0xFFC961
+          else:
+            - lvgl.widget.update:
+                id: tile4
+                state:
+                  checked: false
+            - lvgl.label.update:
+                id: tile4_state
+                text: "UIT"
+            - lvgl.label.update:
+                id: tile4_icon
+                text_color: 0x8A8074
+      - if:
+          condition:
+            lambda: 'return id(l5_on).state;'
+          then:
+            - lvgl.widget.update:
+                id: tile5
+                state:
+                  checked: true
+            - lvgl.label.update:
+                id: tile5_state
+                text: "AAN"
+            - lvgl.label.update:
+                id: tile5_icon
+                text_color: 0xFFC961
+          else:
+            - lvgl.widget.update:
+                id: tile5
+                state:
+                  checked: false
+            - lvgl.label.update:
+                id: tile5_state
+                text: "UIT"
+            - lvgl.label.update:
+                id: tile5_icon
+                text_color: 0x8A8074
+      - if:
+          condition:
+            lambda: 'return id(l6_on).state;'
+          then:
+            - lvgl.widget.update:
+                id: tile6
+                state:
+                  checked: true
+            - lvgl.label.update:
+                id: tile6_state
+                text: "AAN"
+            - lvgl.label.update:
+                id: tile6_icon
+                text_color: 0xFFC961
+          else:
+            - lvgl.widget.update:
+                id: tile6
+                state:
+                  checked: false
+            - lvgl.label.update:
+                id: tile6_state
+                text: "UIT"
+            - lvgl.label.update:
+                id: tile6_icon
+                text_color: 0x8A8074
+
+# ======================================================================
+# De interface
+# ======================================================================
+lvgl:
+  displays: [lcd]
+  touchscreens: [ctp]
+  # 100% geeft LVGL een volledige schermbuffer, dus één SPI-overdracht per
+  # beeldje in plaats van vier. Scheelt drie keer de overhead van
+  # venstercommando's en transactieopzet. Kan hier ruim: 150 kB in 8 MB PSRAM.
+  buffer_size: 100%
+  bg_color: 0x0A0B0D
+
+  # Screensaver na een minuut stilte. De achtergrondverlichting gaat ver
+  # omlaag maar niet uit: zo blijft de klok 's nachts leesbaar zonder de
+  # kamer te verlichten, en spaart het paneel zijn eigen paneel.
+  on_idle:
+    timeout: 30s
+    then:
+      # Geen paginanimatie. Getest op hardware: een schuivende of vervagende
+      # overgang moet elk beeldje het volledige scherm over SPI sturen, en bij
+      # ~31 ms per scherm blijven daar maar een handvol beeldjes over. Dat
+      # stottert zichtbaar, en dat oogt slechter dan een directe wissel.
+      # De overgang zit nu volledig in de verlichting: die dimt wel vloeiend,
+      # want PWM staat los van de tekensnelheid.
+      - lvgl.page.show: page_clock
+
+      # Even wachten zodat de klok eerst helder in beeld staat en pas daarna
+      # wegzakt. Zo blijft er een rustige overgang, zonder beeldopbouw.
+      - delay: 250ms
+      - if:
+          # Tik je tijdens die 800 ms het paneel wakker, dan mag dit niet
+          # alsnog het scherm dimmen.
+          condition:
+            lvgl.page.is_showing: page_clock
+          then:
+            - light.turn_on:
+                id: backlight
+                brightness: 25%
+                transition_length: 2s
+
+  pages:
+
+    # ------------------------------------------------------------------
+    # Startscherm: kop + 2x3 raster
+    # ------------------------------------------------------------------
+    - id: page_home
+      bg_color: 0x0A0B0D
+      bg_opa: COVER
+      widgets:
+        - label:
+            id: hdr_title
+            text: "VERLICHTING"
+            text_font: f_header
+            text_color: 0xEDE9E1
+            text_letter_space: 3
+            x: 14
+            y: 12
+        - label:
+            id: hdr_clock
+            text: "--:--"
+            text_font: f_small
+            text_color: 0xC8A45C
+            align: TOP_RIGHT
+            x: -14
+            y: 18
+        # Gouden haarlijn onder de kop
+        - obj:
+            x: 14
+            y: 38
+            width: 292
+            height: 1
+            bg_color: 0xC8A45C
+            bg_opa: 60%
+            border_width: 0
+            radius: 0
+
+        - obj:
+            id: grid_wrap
+            # Groter dan het raster zelf, met pad_all als marge: LVGL knipt
+            # kinderen af op de ouder, en zonder die speling zouden de
+            # slagschaduwen langs de buitenranden worden afgesneden.
+            x: 6
+            y: 44
+            width: 308
+            height: 192
+            bg_opa: TRANSP
+            border_width: 0
+            pad_all: 8
+            layout:
+              type: grid
+              grid_columns: 3
+              grid_rows: 2
+              pad_row: 8
+              pad_column: 8
+            widgets:
+              - button:
+                  id: tile1
+                  <<: *tile_look
+                  grid_cell_row_pos: 0
+                  grid_cell_column_pos: 0
+                  widgets:
+                    - obj: *tile_bevel
+                    - label:
+                        text: "\U000F0335"
+                        text_font: f_icon
+                        id: tile1_icon
+                        text_color: 0x8A8074
+                        align: TOP_MID
+                        y: 4
+                    - label:
+                        text: ${light1_name}
+                        text_font: f_tile
+                        text_color: 0xEDE9E1
+                        align: BOTTOM_MID
+                        y: -20
+                    - label:
+                        id: tile1_state
+                        text: "UIT"
+                        text_font: f_small
+                        text_letter_space: 2
+                        align: BOTTOM_MID
+                        y: -5
+                  on_short_click:
+                    - homeassistant.action:
+                        action: light.toggle
+                        data:
+                          entity_id: ${light1_entity}
+                  on_long_press:
+                    - lambda: 'id(active_entity) = "${light1_entity}";'
+                    - lvgl.label.update:
+                        id: dim_title
+                        text: ${light1_name}
+                    - script.execute:
+                        id: open_dim
+                        bri: !lambda 'return id(l1_bri).state;'
+
+              - button:
+                  id: tile2
+                  <<: *tile_look
+                  grid_cell_row_pos: 1
+                  grid_cell_column_pos: 0
+                  widgets:
+                    - obj: *tile_bevel
+                    - label:
+                        text: "\U000F0335"
+                        text_font: f_icon
+                        id: tile2_icon
+                        text_color: 0x8A8074
+                        align: TOP_MID
+                        y: 4
+                    - label:
+                        text: ${light2_name}
+                        text_font: f_tile
+                        text_color: 0xEDE9E1
+                        align: BOTTOM_MID
+                        y: -20
+                    - label:
+                        id: tile2_state
+                        text: "UIT"
+                        text_font: f_small
+                        text_letter_space: 2
+                        align: BOTTOM_MID
+                        y: -5
+                  on_short_click:
+                    - homeassistant.action:
+                        action: light.toggle
+                        data:
+                          entity_id: ${light2_entity}
+                  on_long_press:
+                    - lambda: 'id(active_entity) = "${light2_entity}";'
+                    - lvgl.label.update:
+                        id: dim_title
+                        text: ${light2_name}
+                    - script.execute:
+                        id: open_dim
+                        bri: !lambda 'return id(l2_bri).state;'
+
+              - button:
+                  id: tile3
+                  <<: *tile_look
+                  grid_cell_row_pos: 0
+                  grid_cell_column_pos: 1
+                  widgets:
+                    - obj: *tile_bevel
+                    - label:
+                        text: "\U000F0335"
+                        text_font: f_icon
+                        id: tile3_icon
+                        text_color: 0x8A8074
+                        align: TOP_MID
+                        y: 4
+                    - label:
+                        text: ${light3_name}
+                        text_font: f_tile
+                        text_color: 0xEDE9E1
+                        align: BOTTOM_MID
+                        y: -20
+                    - label:
+                        id: tile3_state
+                        text: "UIT"
+                        text_font: f_small
+                        text_letter_space: 2
+                        align: BOTTOM_MID
+                        y: -5
+                  on_short_click:
+                    - homeassistant.action:
+                        action: light.toggle
+                        data:
+                          entity_id: ${light3_entity}
+                  on_long_press:
+                    - lambda: 'id(active_entity) = "${light3_entity}";'
+                    - lvgl.label.update:
+                        id: dim_title
+                        text: ${light3_name}
+                    - script.execute:
+                        id: open_dim
+                        bri: !lambda 'return id(l3_bri).state;'
+
+              - button:
+                  id: tile4
+                  <<: *tile_look
+                  grid_cell_row_pos: 1
+                  grid_cell_column_pos: 1
+                  widgets:
+                    - obj: *tile_bevel
+                    - label:
+                        text: "\U000F0335"
+                        text_font: f_icon
+                        id: tile4_icon
+                        text_color: 0x8A8074
+                        align: TOP_MID
+                        y: 4
+                    - label:
+                        text: ${light4_name}
+                        text_font: f_tile
+                        text_color: 0xEDE9E1
+                        align: BOTTOM_MID
+                        y: -20
+                    - label:
+                        id: tile4_state
+                        text: "UIT"
+                        text_font: f_small
+                        text_letter_space: 2
+                        align: BOTTOM_MID
+                        y: -5
+                  on_short_click:
+                    - homeassistant.action:
+                        action: light.toggle
+                        data:
+                          entity_id: ${light4_entity}
+                  on_long_press:
+                    - lambda: 'id(active_entity) = "${light4_entity}";'
+                    - lvgl.label.update:
+                        id: dim_title
+                        text: ${light4_name}
+                    - script.execute:
+                        id: open_dim
+                        bri: !lambda 'return id(l4_bri).state;'
+
+              - button:
+                  id: tile5
+                  <<: *tile_look
+                  grid_cell_row_pos: 0
+                  grid_cell_column_pos: 2
+                  widgets:
+                    - obj: *tile_bevel
+                    - label:
+                        text: "\U000F0335"
+                        text_font: f_icon
+                        id: tile5_icon
+                        text_color: 0x8A8074
+                        align: TOP_MID
+                        y: 4
+                    - label:
+                        text: ${light5_name}
+                        text_font: f_tile
+                        text_color: 0xEDE9E1
+                        align: BOTTOM_MID
+                        y: -20
+                    - label:
+                        id: tile5_state
+                        text: "UIT"
+                        text_font: f_small
+                        text_letter_space: 2
+                        align: BOTTOM_MID
+                        y: -5
+                  on_short_click:
+                    - homeassistant.action:
+                        action: light.toggle
+                        data:
+                          entity_id: ${light5_entity}
+                  on_long_press:
+                    - lambda: 'id(active_entity) = "${light5_entity}";'
+                    - lvgl.label.update:
+                        id: dim_title
+                        text: ${light5_name}
+                    - script.execute:
+                        id: open_dim
+                        bri: !lambda 'return id(l5_bri).state;'
+
+              - button:
+                  id: tile6
+                  <<: *tile_look
+                  grid_cell_row_pos: 1
+                  grid_cell_column_pos: 2
+                  widgets:
+                    - obj: *tile_bevel
+                    - label:
+                        text: "\U000F0335"
+                        text_font: f_icon
+                        id: tile6_icon
+                        text_color: 0x8A8074
+                        align: TOP_MID
+                        y: 4
+                    - label:
+                        text: ${light6_name}
+                        text_font: f_tile
+                        text_color: 0xEDE9E1
+                        align: BOTTOM_MID
+                        y: -20
+                    - label:
+                        id: tile6_state
+                        text: "UIT"
+                        text_font: f_small
+                        text_letter_space: 2
+                        align: BOTTOM_MID
+                        y: -5
+                  on_short_click:
+                    - homeassistant.action:
+                        action: light.toggle
+                        data:
+                          entity_id: ${light6_entity}
+                  on_long_press:
+                    - lambda: 'id(active_entity) = "${light6_entity}";'
+                    - lvgl.label.update:
+                        id: dim_title
+                        text: ${light6_name}
+                    - script.execute:
+                        id: open_dim
+                        bri: !lambda 'return id(l6_bri).state;'
+
+    # ------------------------------------------------------------------
+    # Dimpaneel: één lamp, grote gouden ring
+    # ------------------------------------------------------------------
+    - id: page_dim
+      bg_color: 0x0A0B0D
+      bg_opa: COVER
+      widgets:
+        - button:
+            id: dim_back
+            x: 2
+            y: 2
+            width: 62
+            height: 62
+            radius: 31
+            bg_opa: TRANSP
+            border_width: 0
+            shadow_width: 0
+            text_color: 0xC8A45C
+            widgets:
+              - label:
+                  text: "\U000F0141"
+                  text_font: f_icon_sm
+                  align: CENTER
+            on_short_click:
+              - lvgl.page.show: page_home
+
+        - label:
+            id: dim_title
+            text: "Lamp"
+            text_font: f_header
+            text_color: 0xEDE9E1
+            text_letter_space: 2
+            align: TOP_RIGHT
+            x: -26
+            y: 56
+
+        - arc:
+            id: dim_arc
+            x: 34
+            y: 66
+            width: 132
+            height: 132
+            min_value: 1
+            max_value: 100
+            value: 50
+            adjustable: true       # zonder dit is de ring niet versleepbaar
+            start_angle: 135
+            end_angle: 45
+            arc_width: 10
+            arc_color: 0x1C2027
+            indicator:
+              arc_color: 0xC8A45C
+              arc_width: 10
+            knob:
+              bg_color: 0xE8C87E
+              pad_all: 5
+            on_value:
+              - lvgl.label.update:
+                  id: dim_pct
+                  text: !lambda |-
+                    char buf[8];
+                    snprintf(buf, sizeof(buf), "%d", (int) x);
+                    return std::string(buf);
+            on_release:
+              # Alleen bij loslaten sturen, niet tijdens het slepen — anders
+              # overspoel je Home Assistant met commando's.
+              - if:
+                  condition:
+                    lambda: 'return !id(ui_updating);'
+                  then:
+                    - homeassistant.action:
+                        action: light.turn_on
+                        data_template:
+                          entity_id: "{{ ent }}"
+                          brightness_pct: "{{ pct }}"
+                        variables:
+                          ent: !lambda |-
+                            return id(active_entity);
+                          pct: !lambda |-
+                            return (int) lv_arc_get_value(id(dim_arc));
+
+        - label:
+            id: dim_pct
+            text: "50"
+            text_font: f_huge
+            text_color: 0xEDE9E1
+            # Gecentreerd op de ring, niet op het scherm: schermmidden is
+            # x=160, ringmidden x=92, dus 68 px naar links.
+            # Gecentreerd op de ring: schermmidden x=160, ringmidden x=100.
+            align: CENTER
+            x: -60
+            y: 12
+        - label:
+            text: "%"
+            text_font: f_small
+            text_color: 0x585E68
+            align: CENTER
+            x: -60
+            y: 44
+
+        - button:
+            id: dim_toggle
+            align: BOTTOM_RIGHT
+            x: -26
+            y: -38
+            width: 130
+            height: 50
+            radius: 25
+            bg_opa: COVER
+            bg_color: 0x272C35
+            bg_grad_color: 0x14171D
+            bg_grad_dir: VER
+            border_width: 1
+            border_color: 0xC8A45C
+            shadow_color: 0x000000
+            shadow_opa: 70%
+            shadow_width: 12
+            shadow_offset_y: 4
+            text_color: 0xE8C87E
+            pressed:
+              bg_color: 0x0F1216
+              bg_grad_color: 0x1E232B
+              shadow_opa: 0%
+            widgets:
+              # Eén gecentreerd label. Icoon en tekst als twee tegenover
+              # elkaar uitgelijnde labels liepen bij deze knopbreedte door
+              # elkaar heen: LEFT_MID en RIGHT_MID overlappen zodra de tekst
+              # breder is dan de helft van de knop.
+              - label:
+                  text: "AAN / UIT"
+                  text_font: f_tile
+                  text_letter_space: 2
+                  align: CENTER
+            on_short_click:
+              - homeassistant.action:
+                  action: light.toggle
+                  data_template:
+                    entity_id: "{{ ent }}"
+                  variables:
+                    ent: !lambda |-
+                      return id(active_entity);
+
+    # ------------------------------------------------------------------
+    # Screensaver: flip-klok. Geen bedienbare elementen; elke aanraking
+    # brengt je terug naar het startscherm (zie touchscreen: on_touch).
+    # ------------------------------------------------------------------
+    - id: page_clock
+      bg_color: 0x000000
+      bg_opa: COVER
+      widgets:
+        # Hier stond een onzichtbare knop over het hele scherm om de
+        # screensaver weg te tikken. Die bleek op hardware niet te werken:
+        # met alleen die knop reageerde het paneel nergens op. Het wekken
+        # gebeurt daarom bij touchscreen: on_release, buiten LVGL om.
+        - obj:
+            <<: *flip_card
+            x: 24
+            widgets:
+              - label:
+                  id: clk_hh
+                  text: "--"
+                  text_font: f_flip
+                  text_color: 0xE8E2D8
+                  align: CENTER
+              - obj: *flip_seam
+
+        - obj:
+            <<: *flip_card
+            x: 170
+            widgets:
+              - label:
+                  id: clk_mm
+                  text: "--"
+                  text_font: f_flip
+                  text_color: 0xE8E2D8
+                  align: CENTER
+              - obj: *flip_seam
+
+        - label:
+            id: clk_date
+            text: ""
+            text_font: f_tile
+            text_color: 0xE8E2D8   # gelijk aan de cijfers
+            text_letter_space: 1
+            align: BOTTOM_MID
+            y: -16

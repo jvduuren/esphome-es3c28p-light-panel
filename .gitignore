@@ -1,0 +1,17 @@
+# ESPHome build artifacts
+.esphome/
+*.bin
+*.elf
+
+# Never commit real credentials
+secrets.yaml
+!secrets.yaml.example
+
+# Editors / OS
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+
+# Python venv
+.venv/
