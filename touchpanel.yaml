@@ -2,29 +2,29 @@
 #   MCU   : ESP32-S3-WROOM-1 N16R8 (16 MB flash, 8 MB octal PSRAM)
 #   LCD   : ILI9341V, 240x320, 4-wire SPI
 #   Touch : FT6336G capacitive, I2C 0x38
-#   Audio : ES8311 codec op I2C 0x18 (aanwezig, ongebruikt)
+#   Audio : ES8311 codec on I2C 0x18 (present, unused)
 #
-# Lichtbedieningspaneel, landscape 320x240: 6 lampen in een 3x2 raster,
-# per kolom gegroepeerd op ruimte.
-#   korte tik           -> lamp aan/uit
-#   lang druk           -> dimpaneel voor die ene lamp
-#   30 s stil           -> flip-klok als screensaver, verlichting naar 25%
-#   aanraking daarna    -> terug naar het raster op volle helderheid
+# Light control panel, landscape 320x240: six lights in a 3x2 grid,
+# grouped by room per column.
+#   short tap        -> toggle the light
+#   long press       -> dimming page for that one light
+#   30 s idle        -> flip-clock screensaver, backlight down to 25%
+#   any touch after  -> back to the grid at full brightness
 #
-# De diagnostische bring-up config staat in bringup.yaml: die toont
-# hoekblokjes en touch-coordinaten, handig als er ooit iets aan de
-# bedrading of orientatie lijkt te mankeren.
+# The diagnostic bring-up config lives in bringup.yaml: it shows corner keys
+# and logs touch coordinates, which is what you want if anything ever looks
+# wrong with the wiring or the orientation.
 
 substitutions:
   device_name: touchpanel
   friendly_name: "Touch Panel"
 
   # ======================================================================
-  # DE 6 LAMPEN — vul hier je Home Assistant entity_id's in.
-  # Dit is het enige wat je hoeft aan te passen om andere lampen te kiezen.
-  # Namen kort houden: er past ongeveer 12 tekens op een tegel.
-  # Volgorde is links-naar-rechts, rij voor rij; 1+2 bovenaan, 5+6 onderaan.
-  # Nu gegroepeerd per ruimte: woonkamer / keuken / overig.
+  # THE SIX LIGHTS — put your own Home Assistant entity_id's here.
+  # This is the only block you need to touch to point the panel at other lights.
+  # Keep names short: roughly 12 characters fit on a tile.
+  # Cells fill per column: 1+2 is the left column, 5+6 the right one.
+  # Grouped by room here: living room / kitchen / the rest.
   # ======================================================================
   light1_entity: light.woonkamer
   light1_name:   "Woonkamer"
@@ -40,36 +40,38 @@ substitutions:
   light6_name:   "Kantoor"
 
   # ======================================================================
-  # TRAPVERLICHTING — gaat 's nachts vanzelf aan zodra je het paneel wekt.
-  # Bewust los gedefinieerd en niet als "tegel 5": nu is dat toevallig
-  # dezelfde lamp als Gang, maar als de tegelindeling ooit verandert zou
-  # deze functie anders stilzwijgend de verkeerde lamp gaan schakelen.
-  # Dat merk je dan pas midden in de nacht.
-  # Uren zijn in 24-uursnotatie; het venster loopt over middernacht heen.
+  # STAIR LIGHT — switched on automatically at night when you wake the panel.
+  # Deliberately defined separately rather than reusing "tile 5": right now
+  # that happens to be the same lamp, but if the tile layout ever changes this
+  # feature would silently start switching the wrong light — and you would only
+  # find out in the middle of the night.
+  # Hours are 24h; the window wraps around midnight.
   # ======================================================================
   stair_entity:    light.lampen_gang
   stair_night_from: "23"
   stair_night_to:   "7"
 
   # ======================================================================
-  # SCHERMTEKST — alle zichtbare tekst staat hier, zodat vertalen een kwestie
-  # is van dit blok aanpassen en nergens anders in het bestand hoeven zijn.
+  # ON-SCREEN TEXT — every string the panel displays lives here, so translating
+  # means editing this block and nothing else in the file.
   #
-  # LET OP bij accenten: ESPHome bakt standaard alleen de glyphset
-  # GF_Latin_Kernel in (116 tekens), en daar ontbreken a-umlaut, o-umlaut,
-  # u-umlaut, sz en e-accent. "Kuche" zou dan een leeg vakje tonen. Zet in dat
-  # geval bij elk tekstlettertype onder font: de regel
+  # WATCH OUT WITH ACCENTS: by default ESPHome only embeds the GF_Latin_Kernel
+  # glyph set (116 characters), which has no umlauts, no eszett and no accented
+  # vowels. A German "Kuche" would render with a blank where the u-umlaut should
+  # be. If your language needs them, add this line to every text font under
+  # font::
   #     glyphsets: [GF_Latin_Core]
-  # Die set heeft 319 tekens en dekt Duits, Frans, Spaans en Scandinavisch.
+  # That set has 319 characters and covers German, French, Spanish and the
+  # Nordic languages.
   # ======================================================================
   ui_title:  "VERLICHTING"
   ui_on:     "AAN"
   ui_off:    "UIT"
   ui_toggle: "AAN / UIT"
-  # Even zichtbaar bij het openen van het dimpaneel, tot de lampnaam er staat.
+  # Briefly visible when the dimming page opens, until the light name lands.
   ui_light:  "Lamp"
-  # Volgorde vast: zondag eerst en januari eerst, want day_of_week en month
-  # tellen in ESPHome vanaf 1 voor respectievelijk zondag en januari.
+  # Order is fixed: Sunday first and January first, because ESPHome's
+  # day_of_week counts from 1 for Sunday and month from 1 for January.
   ui_weekdays: '"zondag", "maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag"'
   ui_months:   '"januari", "februari", "maart", "april", "mei", "juni", "juli", "augustus", "september", "oktober", "november", "december"'
 
@@ -78,9 +80,9 @@ substitutions:
   lcd_mosi: GPIO11
   lcd_miso: GPIO13
   lcd_cs:   GPIO10
-  lcd_dc:   GPIO46     # strapping pin (ROM msg) — veilig als uitgang na boot
-  lcd_bl:   GPIO45     # strapping pin (VDD_SPI) — moet laag zijn bij boot
-  # LCD-reset hangt aan de RST-lijn van de module, niet aan een GPIO.
+  lcd_dc:   GPIO46     # strapping pin (ROM msg) — safe as an output after boot
+  lcd_bl:   GPIO45     # strapping pin (VDD_SPI) — must stay low at boot
+  # LCD reset is tied to the module's RST line, not to a GPIO.
 
   # --- Touch (I2C) ---
   ctp_sda: GPIO16
@@ -91,20 +93,20 @@ substitutions:
   rgb_led: GPIO42
 
 # ======================================================================
-# Palet — warm antraciet met goud. Bewust géén blauwtinten: die vechten met
-# het gouden accent en maken het geheel koel en technisch.
-#   0x0A0B0D  achtergrond, bijna zwart
-#   0x322E29  tegel uit, bovenrand (lichtst)
-#   0x0C0B0A  tegel uit, onderrand (valt weg in de achtergrond)
-#   0x46413A  randlijn rust
-#   0x574121  tegel aan, bovenrand
-#   0x241909  tegel aan, onderrand
-#   0xC8A45C  goud
-#   0xE0B96B  goud rand
-#   0xFFC961  icoon aan
-#   0x8A8074  icoon uit, warm grijs
-#   0xEDE9E1  tekst warm wit
-#   0x544D44  tekst gedempt
+# Palette — warm charcoal with gold. Deliberately no blue tints: they fight
+# the gold accent and make the whole thing read cold and technical.
+#   0x0A0B0D  background, near black
+#   0x322E29  tile off, top edge (lightest)
+#   0x0C0B0A  tile off, bottom edge (falls away into the background)
+#   0x46413A  border at rest
+#   0x574121  tile on, top edge
+#   0x241909  tile on, bottom edge
+#   0xC8A45C  gold
+#   0xE0B96B  gold border
+#   0xFFC961  icon on
+#   0x8A8074  icon off, warm grey
+#   0xEDE9E1  text, warm white
+#   0x544D44  text, muted
 # ======================================================================
 
 esphome:
@@ -123,8 +125,9 @@ psram:
 
 logger:
   level: WARN
-  # ESPHome kiest hier al vanzelf USB_SERIAL_JTAG, passend bij hoe de Type-C
-  # poort zich meldt (generiek USB serieel, geen CH340/CP210x bridge).
+  # ESPHome already defaults to USB_SERIAL_JTAG on this target, which matches
+  # how the Type-C port enumerates: a generic USB serial device, with no
+  # CH340 or CP210x bridge in sight.
 
 api:
   encryption:
@@ -150,7 +153,7 @@ time:
     id: ha_time
 
 # ======================================================================
-# Bussen en hardware
+# Buses and hardware
 # ======================================================================
 spi:
   clk_pin: ${lcd_sck}
@@ -176,11 +179,10 @@ light:
     name: "Backlight"
     id: backlight
     restore_mode: ALWAYS_ON
-    # Standaard past dit component gammacorrectie 2.8 toe, bedoeld om dimmen
-    # voor het oog lineair te laten voelen bij verlichting. Voor een
-    # achtergrondverlichting werkt dat averechts: 12% werd zo 0.12^2.8, oftewel
-    # 0,26% duty, en dus vrijwel niets. Met 1.0 betekent een percentage
-    # precies dat percentage.
+    # By default this component applies gamma correction 2.8, meant to make
+    # dimming feel linear to the eye for room lighting. For a backlight it is
+    # actively unhelpful: 12% became 0.12^2.8, i.e. 0.26% duty, which is
+    # effectively off. With 1.0 a percentage means that percentage.
     gamma_correct: 1.0
 
   - platform: esp32_rmt_led_strip
@@ -203,26 +205,26 @@ display:
     dimensions:
       width: 320
       height: 240
-    # Landscape via de MADCTL van de driver, niet via rotation:. Bij een
-    # rotation ongelijk aan 0 valt ili9xxx terug op een trage tekenroute,
-    # wat juist bij LVGL zwaar telt. transform: sluit rotation: uit.
-    # LET OP: transform overschrijft de modelstandaard volledig, dus de
-    # mirror_x die het paneel in portret nodig had staat hier expliciet.
+    # Landscape via the driver's MADCTL, not via rotation:. With a rotation
+    # other than 0, ili9xxx falls back to a slow draw path, which costs dearly
+    # under LVGL. transform: and rotation: are mutually exclusive.
+    # NOTE: transform replaces the model defaults entirely, so the mirror_x
+    # this panel needed in portrait is restated here explicitly.
     transform:
       swap_xy: true
       mirror_x: false
       mirror_y: false
-    # invert_colors en color_order zijn geverifieerd op hardware 2026-09-20.
+    # invert_colors and color_order were verified on hardware 2026-09-20.
     invert_colors: true
     color_order: bgr
-    # Getest op hardware 2026-09-21. 80 MHz geeft korrelige letters op deze
-    # print: de flanken halen het niet en er kantelen bits in de pixeldata.
-    # Tussenliggende waarden bestaan niet — de ESP32-S3 deelt 80 MHz door een
-    # geheel getal, dus de opties zijn 80 / 40 / 26,7 / 20. ESPHome weigert
-    # 60MHz dan ook met "not available for this chip".
-    # 40 MHz is daarmee het haalbare maximum: ~31 ms per volledig scherm.
-    # Dat is meteen de bovengrens voor hoe vloeiend een schermvullende
-    # animatie hier ooit kan worden.
+    # Tested on hardware 2026-09-21. 80 MHz gives grainy text on this board:
+    # the edges do not make it and bits flip in the pixel data. There is
+    # nothing in between — the ESP32-S3 derives the SPI clock by integer
+    # division of 80 MHz, so the options are 80 / 40 / 26.7 / 20, and ESPHome
+    # rejects 60MHz outright with "not available for this chip".
+    # 40 MHz is therefore the practical maximum: ~31 ms per full frame, which
+    # is also the ceiling on how smooth any full-screen animation can ever be
+    # on this panel.
     data_rate: 40MHz
     auto_clear_enabled: false
 
@@ -232,48 +234,47 @@ touchscreen:
     display: lcd
     interrupt_pin: ${ctp_int}
     reset_pin: ${ctp_rst}
-    # De FT6336G rapporteert altijd in het native portretvlak van het paneel.
-    # De touchscreen-component volgt de displaydraai NIET vanzelf: die gebruikt
-    # zijn eigen transform en schaalt tegen get_native_width(). Dus dezelfde
-    # swap hier, anders landen tikken op de verkeerde plek.
+    # The FT6336G always reports in the panel's native portrait plane. The
+    # touchscreen component does NOT follow the display rotation on its own:
+    # it uses its own transform and scales against get_native_width(). Hence
+    # the same swap here, or taps land in the wrong place.
     transform:
       swap_xy: true
       mirror_x: false
-      # Gemeten op hardware 2026-09-21: de Y-as komt omgekeerd binnen. Een tik
-      # op de aan/uit-knop (y 152-202) meldde y=59-77, oftewel 240 minus de
-      # werkelijke waarde. X klopte wel.
+      # Measured on hardware 2026-09-21: the Y axis arrives inverted. A tap on
+      # the toggle button (spanning y 152-202) reported y=59-77, i.e. exactly
+      # 240 minus the true value. X was correct.
       mirror_y: true
-    # Screensaver wegtikken. Dit MOET op on_release en niet op on_touch:
-    # on_touch vuurt voordat LVGL de aanraking verwerkt, dus een paginawissel
-    # op dat moment laat LVGL de nog ingedrukte vinger alsnog op het
-    # startscherm aflezen, waar hij een tegel indrukt. Dat gebeurde ook echt.
-    # Bij on_release is de vinger al los en kan dat niet.
+    # Dismissing the screensaver. This MUST be on_release and not on_touch:
+    # on_touch fires before LVGL processes the touch, so switching pages at
+    # that moment makes LVGL read the still-pressed finger on the home page
+    # and press a tile there. That really happened. By on_release the finger
+    # is already off the glass, so it cannot.
     #
-    # Een onzichtbare knop op de klokpagina zelf leek netter, maar werkte op
-    # deze hardware niet: het paneel reageerde dan nergens op.
+    # A full-screen invisible button on the clock page looked tidier but did
+    # not work on this hardware: the panel then responded to nothing at all.
     on_release:
       - if:
           condition:
             lvgl.page.is_showing: page_clock
           then:
-            # Helderheid vlot omhoog; de paginawissel zelf is direct.
+            # Brightness up briskly; the page switch itself is instant.
             - light.turn_on:
                 id: backlight
                 brightness: 100%
                 transition_length: 400ms
             - lvgl.page.show: page_home
 
-            # 's Nachts meteen de trapverlichting aan, zodat je met een
-            # slaperig hoofd niet ook nog een knop hoeft te zoeken. Alleen
-            # als hij uit staat: brandt hij al, dan laten we de bestaande
-            # stand met rust.
+            # At night, switch the stair light on straight away, so you do
+            # not have to hunt for a button half asleep. Only when it is off:
+            # if it already burns, leave whatever level it is at alone.
             - if:
                 condition:
                   and:
                     - lambda: |-
                         auto t = id(ha_time).now();
-                        if (!t.is_valid()) return false;   // geen tijd, geen aanname
-                        // Venster loopt over middernacht, dus OF in plaats van EN
+                        if (!t.is_valid()) return false;   // no clock, no guess
+                        // Window wraps midnight, hence OR rather than AND
                         return t.hour >= ${stair_night_from} || t.hour < ${stair_night_to};
                     - lambda: 'return !id(stair_on).state;'
                 then:
@@ -283,7 +284,7 @@ touchscreen:
                         entity_id: ${stair_entity}
 
 # ======================================================================
-# Lettertypen
+# Fonts
 # ======================================================================
 font:
   - file: "gfonts://Montserrat@300"
@@ -306,8 +307,8 @@ font:
     id: f_flip
     size: 86
     bpp: 4
-    # Alleen cijfers. Op 86 px zou de volledige tekenset onnodig veel
-    # flash kosten; de flip-klok toont niets anders dan 0 t/m 9.
+    # Digits only. At 86 px the full character set would cost pointless
+    # flash; the flip clock shows nothing but 0 through 9.
     glyphs: ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
   - file: "https://github.com/Templarian/MaterialDesign-Webfont/raw/master/fonts/materialdesignicons-webfont.ttf"
     id: f_icon
@@ -324,33 +325,33 @@ globals:
   - id: active_entity
     type: std::string
     initial_value: '""'
-  - id: ui_updating          # voorkomt dat het vullen van de dimring meteen
-    type: bool               # als bediening telt
+  - id: ui_updating          # stops filling the dim arc from counting as
+    type: bool               # user input the moment it is set
     initial_value: 'false'
 
 # ======================================================================
-# Herbruikbare tegel-opmaak. Sleutels die met een punt beginnen negeert
-# ESPHome, dus dit blok bestaat alleen om met een anchor naar te verwijzen.
+# Reusable tile styling. ESPHome ignores keys starting with a dot, so this
+# block exists purely as an anchor to reference.
 # ======================================================================
 .tile_look: &tile_look
-  # Geen width/height 100%: in LVGL is een percentage relatief aan de OUDER,
-  # niet aan de rastercel. Elke tegel werd daardoor zo groot als de hele
-  # rastercontainer. STRETCH laat de cel de maat bepalen.
+  # No width/height 100%: in LVGL a percentage is relative to the PARENT, not
+  # to the grid cell. That made every tile as large as the whole grid
+  # container. STRETCH lets the cell decide the size.
   grid_cell_x_align: STRETCH
   grid_cell_y_align: STRETCH
   radius: 14
   pad_all: 2
 
-  # Reliëf berust op twee dingen. Het verticale verloop loopt van licht
-  # bovenaan naar donker onderaan, wat het oog leest als licht van boven op
-  # een bollend vlak. De slagschaduw eronder tilt de tegel van de
-  # achtergrond los. Samen geven ze diepte zonder een enkele afbeelding.
+  # The raised look rests on two things. The vertical gradient runs light at
+  # the top to dark at the bottom, which the eye reads as light falling from
+  # above onto a bulging surface. The drop shadow underneath lifts the tile
+  # off the background. Together they give depth without a single image.
   bg_opa: COVER
-  # Warm antraciet, geen staalblauw. Blauwe tegels vechten met het gouden
-  # accent en maken het geheel koel en technisch; een warme grijstint laat
-  # het goud juist als goud lezen.
-  bg_color: 0x322E29          # bovenrand, lichtst
-  bg_grad_color: 0x0C0B0A     # onderrand, bijna zwart
+  # Warm charcoal, not steel blue. Blue tiles fight the gold accent and make
+  # the whole thing read cold and technical; a warm grey lets the gold read
+  # as gold.
+  bg_color: 0x322E29          # top edge, lightest
+  bg_grad_color: 0x0C0B0A     # bottom edge, near black
   bg_grad_dir: VER
   clip_corner: true
   border_width: 1
@@ -359,12 +360,12 @@ globals:
   shadow_opa: 60%
   shadow_width: 12
   shadow_offset_y: 5
-  # Bewust dof: hoe doffer de uit-stand, hoe harder het goud straks opvalt.
+  # Deliberately dull: the duller the off state, the harder the gold lands.
   text_color: 0x544D44
 
   checked:
-    # Lamp aan: warm verloop, en een gouden schaduw in plaats van een zwarte.
-    # Daardoor lijkt de tegel zelf licht te geven in plaats van te zweven.
+    # Light on: warm gradient, and a gold shadow instead of a black one. That
+    # makes the tile read as emitting light rather than floating.
     bg_color: 0x574121
     bg_grad_color: 0x241909
     border_color: 0xE0B96B
@@ -376,18 +377,17 @@ globals:
     shadow_spread: 2
 
   pressed:
-    # Verloop omgekeerd en schaduw weg: de tegel lijkt in te zakken.
+    # Gradient reversed and shadow gone: the tile appears to sink in.
     bg_color: 0x0D1015
     bg_grad_color: 0x1B2028
     shadow_opa: 0%
 
-# Lichtlijn langs de bovenrand. Op een bijna zwarte achtergrond is een zwarte
-# slagschaduw onzichtbaar, dus diepte moet uit licht komen, niet uit donker.
-# Deze dunne heldere lijn leest het oog als een opstaande rand die licht vangt.
-# clickable: false, anders zou hij tikken opvangen die voor de tegel bedoeld zijn.
-# Kaart van de flip-klok. Het verticale verloop maakt de bovenhelft lichter
-# dan de onderhelft, zoals bij een echte splitflap waar het bovenblad het
-# licht vangt.
+# Highlight along the top edge. On a near-black background a black drop shadow
+# is invisible, so depth has to come from light rather than from dark. The eye
+# reads this thin bright line as a raised edge catching light.
+# clickable: false, or it would swallow taps meant for the tile.
+# A flip-clock card. The vertical gradient makes the top half lighter than the
+# bottom, the way the upper leaf of a real split-flap catches the light.
 .flip_card: &flip_card
   y: 42
   width: 126
@@ -406,10 +406,10 @@ globals:
   shadow_width: 18
   shadow_offset_y: 6
 
-# De naad over het midden. Die hoort OVER het cijfer te liggen, niet
-# eronder: bij een echte flip-klok loopt de vouw dwars door het cijfer.
-# In LVGL tekent een later kind over een eerder kind, dus dit blok komt
-# in de YAML ná het cijferlabel.
+# The seam across the middle. It belongs OVER the digit, not behind it: on a
+# real flip clock the fold runs straight through the number. In LVGL a later
+# child draws on top of an earlier one, so this block comes after the digit
+# label in the YAML.
 .flip_seam: &flip_seam
   align: CENTER
   width: 100%
@@ -432,7 +432,7 @@ globals:
   clickable: false
 
 # ======================================================================
-# Home Assistant koppeling — aan/uit toestand en helderheid per lamp
+# Home Assistant wiring — on/off state and brightness per light
 # ======================================================================
 binary_sensor:
   - platform: homeassistant
@@ -574,9 +574,9 @@ binary_sensor:
                 id: tile6_icon
                 text_color: 0x8A8074
 
-  # Aparte uitlezing van de trapverlichting, los van welke tegel die lamp
-  # toevallig heeft. Nodig om te weten of hij al brandt: dan laten we hem
-  # met rust in plaats van er 's nachts nog een commando overheen te sturen.
+  # A separate read of the stair light, independent of whichever tile that
+  # lamp happens to occupy. Needed to know whether it already burns: if so we
+  # leave it alone instead of firing another command at it in the night.
   - platform: homeassistant
     id: stair_on
     entity_id: ${stair_entity}
@@ -618,7 +618,7 @@ text_sensor:
     ip_address:
       name: "IP Address"
 
-# Klok in de kop, elke 10 s bijgewerkt
+# Clock in the header, refreshed every 10 s
 interval:
   - interval: 10s
     then:
@@ -631,8 +631,8 @@ interval:
             snprintf(buf, sizeof(buf), "%02d:%02d", t.hour, t.minute);
             return std::string(buf);
 
-      # Flip-klok: uren en minuten staan op losse kaarten, dus ook als
-      # losse labels.
+      # Flip clock: hours and minutes sit on separate cards, so they are
+      # separate labels too.
       - lvgl.label.update:
           id: clk_hh
           text: !lambda |-
@@ -656,15 +656,15 @@ interval:
             static const char *const MND[] = {${ui_months}};
             auto t = id(ha_time).now();
             if (!t.is_valid()) return std::string("");
-            // day_of_week telt vanaf 1 voor zondag, month vanaf 1 voor januari
+            // day_of_week counts from 1 for Sunday, month from 1 for January
             char buf[48];
             snprintf(buf, sizeof(buf), "%s %d %s",
                      DAG[t.day_of_week - 1], t.day_of_month, MND[t.month - 1]);
             return std::string(buf);
 
 script:
-  # Vult de dimring met de huidige helderheid en opent het paneel. De vlag
-  # voorkomt dat het zetten van die waarde meteen als bediening telt.
+  # Fills the dim arc with the current brightness and opens the page. The
+  # flag stops that write from immediately counting as user input.
   - id: open_dim
     mode: restart
     parameters:
@@ -681,17 +681,16 @@ script:
       - delay: 150ms
       - lambda: 'id(ui_updating) = false;'
 
-  # De tegels worden normaal bijgewerkt zodra Home Assistant een status stuurt.
-  # Bij het opstarten is dat niet betrouwbaar: de eerste ronde statussen komt
-  # binnen rond het moment dat de verbinding wordt opgezet, en een lamp die dan
-  # al aan staat bleef als UIT op het scherm staan. Dit script leest de op dat
-  # moment bekende status van alle zes lampen uit en dwingt de tegels in de
-  # juiste stand. Het draait bij elke nieuwe API-verbinding, dus ook na een
-  # herstart van Home Assistant zelf.
+  # Tiles normally update as soon as Home Assistant pushes a state. At boot
+  # that is not reliable: the first round of states arrives around the moment
+  # the connection is set up, and a light that was already on kept showing as
+  # off. This script reads the currently known state of all six lights and
+  # forces the tiles into the right position. It runs on every new API
+  # connection, so it also covers a Home Assistant restart.
   - id: sync_tiles
     mode: restart
     then:
-      - delay: 3s      # ruim genoeg voor de eerste statusronde na verbinden
+      - delay: 3s      # ample for the first round of states after connecting
       - if:
           condition:
             lambda: 'return id(l1_on).state;'
@@ -844,37 +843,37 @@ script:
                 text_color: 0x8A8074
 
 # ======================================================================
-# De interface
+# The interface
 # ======================================================================
 lvgl:
   displays: [lcd]
   touchscreens: [ctp]
-  # 100% geeft LVGL een volledige schermbuffer, dus één SPI-overdracht per
-  # beeldje in plaats van vier. Scheelt drie keer de overhead van
-  # venstercommando's en transactieopzet. Kan hier ruim: 150 kB in 8 MB PSRAM.
+  # 100% gives LVGL a full-screen buffer, so one SPI transfer per frame
+  # instead of four. Saves three rounds of window commands and transaction
+  # setup. Affordable here: 150 kB out of 8 MB PSRAM.
   buffer_size: 100%
   bg_color: 0x0A0B0D
 
-  # Screensaver na een minuut stilte. De achtergrondverlichting gaat ver
-  # omlaag maar niet uit: zo blijft de klok 's nachts leesbaar zonder de
-  # kamer te verlichten, en spaart het paneel zijn eigen paneel.
+  # Screensaver after 30 s of quiet. The backlight goes well down but not
+  # off: that keeps the clock readable at night without lighting up the room,
+  # and is easier on the backlight LEDs.
   on_idle:
     timeout: 30s
     then:
-      # Geen paginanimatie. Getest op hardware: een schuivende of vervagende
-      # overgang moet elk beeldje het volledige scherm over SPI sturen, en bij
-      # ~31 ms per scherm blijven daar maar een handvol beeldjes over. Dat
-      # stottert zichtbaar, en dat oogt slechter dan een directe wissel.
-      # De overgang zit nu volledig in de verlichting: die dimt wel vloeiend,
-      # want PWM staat los van de tekensnelheid.
+      # No page animation. Tested on hardware: a slide or a fade has to push
+      # the full screen over SPI for every frame, and at ~31 ms per screen
+      # that leaves only a handful of frames. It stutters visibly, which looks
+      # worse than an instant switch. The transition now lives entirely in the
+      # backlight, which does fade smoothly because PWM is independent of
+      # draw speed.
       - lvgl.page.show: page_clock
 
-      # Even wachten zodat de klok eerst helder in beeld staat en pas daarna
-      # wegzakt. Zo blijft er een rustige overgang, zonder beeldopbouw.
+      # A short wait so the clock stands there brightly first and only then
+      # fades down. That keeps a calm transition without any redrawing.
       - delay: 250ms
       - if:
-          # Tik je tijdens die 800 ms het paneel wakker, dan mag dit niet
-          # alsnog het scherm dimmen.
+          # If you wake the panel during that 250 ms, this must not dim the
+          # screen afterwards anyway.
           condition:
             lvgl.page.is_showing: page_clock
           then:
@@ -886,7 +885,7 @@ lvgl:
   pages:
 
     # ------------------------------------------------------------------
-    # Startscherm: kop + 2x3 raster
+    # Home page: header + 3x2 grid
     # ------------------------------------------------------------------
     - id: page_home
       bg_color: 0x0A0B0D
@@ -908,7 +907,7 @@ lvgl:
             align: TOP_RIGHT
             x: -14
             y: 18
-        # Gouden haarlijn onder de kop
+        # Gold hairline under the header
         - obj:
             x: 14
             y: 38
@@ -921,9 +920,9 @@ lvgl:
 
         - obj:
             id: grid_wrap
-            # Groter dan het raster zelf, met pad_all als marge: LVGL knipt
-            # kinderen af op de ouder, en zonder die speling zouden de
-            # slagschaduwen langs de buitenranden worden afgesneden.
+            # Larger than the grid itself, with pad_all as margin: LVGL
+            # clips children to their parent, and without that slack the drop
+            # shadows along the outer edges would be cut off.
             x: 6
             y: 44
             width: 308
@@ -1185,7 +1184,7 @@ lvgl:
                         bri: !lambda 'return id(l6_bri).state;'
 
     # ------------------------------------------------------------------
-    # Dimpaneel: één lamp, grote gouden ring
+    # Dimming page: one light, large gold arc
     # ------------------------------------------------------------------
     - id: page_dim
       bg_color: 0x0A0B0D
@@ -1229,7 +1228,7 @@ lvgl:
             min_value: 1
             max_value: 100
             value: 50
-            adjustable: true       # zonder dit is de ring niet versleepbaar
+            adjustable: true       # without this the arc cannot be dragged
             start_angle: 135
             end_angle: 45
             arc_width: 10
@@ -1248,8 +1247,8 @@ lvgl:
                     snprintf(buf, sizeof(buf), "%d", (int) x);
                     return std::string(buf);
             on_release:
-              # Alleen bij loslaten sturen, niet tijdens het slepen — anders
-              # overspoel je Home Assistant met commando's.
+              # Send on release only, not while dragging - otherwise you
+              # flood Home Assistant with commands.
               - if:
                   condition:
                     lambda: 'return !id(ui_updating);'
@@ -1270,9 +1269,8 @@ lvgl:
             text: "50"
             text_font: f_huge
             text_color: 0xEDE9E1
-            # Gecentreerd op de ring, niet op het scherm: schermmidden is
-            # x=160, ringmidden x=92, dus 68 px naar links.
-            # Gecentreerd op de ring: schermmidden x=160, ringmidden x=100.
+            # Centred on the arc, not on the screen: screen centre is
+            # x=160, arc centre x=100, hence 60 px to the left.
             align: CENTER
             x: -60
             y: 12
@@ -1308,10 +1306,9 @@ lvgl:
               bg_grad_color: 0x1E232B
               shadow_opa: 0%
             widgets:
-              # Eén gecentreerd label. Icoon en tekst als twee tegenover
-              # elkaar uitgelijnde labels liepen bij deze knopbreedte door
-              # elkaar heen: LEFT_MID en RIGHT_MID overlappen zodra de tekst
-              # breder is dan de helft van de knop.
+              # One centred label. Icon and text as two opposed labels ran
+              # into each other at this button width: LEFT_MID and RIGHT_MID
+              # overlap as soon as the text is wider than half the button.
               - label:
                   text: "${ui_toggle}"
                   text_font: f_tile
@@ -1327,17 +1324,17 @@ lvgl:
                       return id(active_entity);
 
     # ------------------------------------------------------------------
-    # Screensaver: flip-klok. Geen bedienbare elementen; elke aanraking
-    # brengt je terug naar het startscherm (zie touchscreen: on_touch).
+    # Screensaver: flip clock. No interactive elements; any touch takes you
+    # back to the home page (see touchscreen: on_release).
     # ------------------------------------------------------------------
     - id: page_clock
       bg_color: 0x000000
       bg_opa: COVER
       widgets:
-        # Hier stond een onzichtbare knop over het hele scherm om de
-        # screensaver weg te tikken. Die bleek op hardware niet te werken:
-        # met alleen die knop reageerde het paneel nergens op. Het wekken
-        # gebeurt daarom bij touchscreen: on_release, buiten LVGL om.
+        # There used to be a full-screen invisible button here to dismiss
+        # the screensaver. On hardware it turned out not to work: with only
+        # that button the panel responded to nothing. Waking therefore happens
+        # at touchscreen: on_release, outside LVGL.
         - obj:
             <<: *flip_card
             x: 24
@@ -1366,7 +1363,7 @@ lvgl:
             id: clk_date
             text: ""
             text_font: f_tile
-            text_color: 0xE8E2D8   # gelijk aan de cijfers
+            text_color: 0xE8E2D8   # same as the digits
             text_letter_space: 1
             align: BOTTOM_MID
             y: -16

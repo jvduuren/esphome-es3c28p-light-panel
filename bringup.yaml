@@ -9,7 +9,7 @@
 # Build the real UI only after this passes.
 
 substitutions:
-  device_name: touchpanel   # diagnostische config - zelfde bord, niet samen met touchpanel.yaml flashen
+  device_name: touchpanel   # same device as touchpanel.yaml - flash one or the other, not both
   friendly_name: "Touch Panel"
 
   # --- LCD (SPI) -----------------------------------------------------------
