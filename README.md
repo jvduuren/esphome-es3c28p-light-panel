@@ -21,7 +21,7 @@ not inferred from datasheets. If you own this board, the
 | MCU | ESP32-S3-WROOM-1 **N16R8** — 16 MB flash, 8 MB octal PSRAM |
 | Display | ILI9341**V**, 240x320 IPS, 4-wire SPI |
 | Touch | **FT6336G** capacitive, I²C `0x38` |
-| Audio | ES8311 codec, I²C `0x18` (present, unused here) |
+| Audio | ES8311 codec, I²C `0x18`, plus an on-board microphone (present, unused here) |
 | Storage | MicroSD over SDIO (unused here) |
 | RGB LED | WS2812B on GPIO42 |
 | Size | 50.0 x 86.0 x 10.6 mm |
@@ -40,6 +40,18 @@ not inferred from datasheets. If you own this board, the
 **The LCD reset is tied to the module's RST line, not to a GPIO.** Do not set
 `reset_pin` on the display — configs copied from generic ILI9341 tutorials
 will fight the hardware here.
+
+### Where to get one
+
+Search for the SKU **ES3C28P** — that string is what identifies this exact
+module, and sellers reuse it even when the listing title says nothing else
+useful. It turns up on AliExpress and on Amazon; one Dutch listing at the time
+of writing is [B0G12SVX2H](https://www.amazon.nl/dp/B0G12SVX2H). Marketplace
+links rot, so treat that as an example rather than a recommendation.
+
+Note that these boards are usually sold as a **voice assistant** platform
+(listings mention XiaoZhi AI), which is why there is an ES8311 audio codec and
+a microphone on a light switch panel. This config leaves both unused.
 
 Vendor resources: [wiki page](https://www.lcdwiki.com/2.8inch_ESP32-S3_Display),
 [3D model](https://www.lcdwiki.com/res/ES3C28P/ES3C28P_3D.zip),
