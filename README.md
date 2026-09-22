@@ -61,9 +61,38 @@ This config drives the display only, so **140 mA** is the number to plan for —
 any phone charger will do. The 560 mA figure assumes a speaker and battery
 charging, neither of which this project uses.
 
+#### Running it on a battery
+
 The board takes a **3.7 V LiPo** with on-board charge management (4.2-6.5 V in,
-500 mA max charge current), so a cable-free wall panel is possible without
-extra hardware. Not something this config does anything with.
+500 mA max charge current), so a cable-free panel needs no extra hardware.
+Before you plan around that, the arithmetic:
+
+0.7 W out of a 3.7 V cell, after roughly 12% conversion loss, is about 210 mA
+drawn from the battery.
+
+| Cell | Backlight at full | Mostly idle at 25% |
+|---|---|---|
+| 1000 mAh | ~4 h | ~5 h |
+| 2000 mAh | ~8 h | ~11 h |
+| 3000 mAh | ~13 h | ~16 h |
+
+**The backlight is not what drains it — WiFi is.** Dimming to 25% buys you an
+hour or two; the ESP32-S3 holding a live connection to Home Assistant accounts
+for most of the draw. That connection cannot be dropped, because the panel has
+to receive state changes or what it displays stops matching reality. Deep sleep
+is therefore off the table: it would break the one thing the panel is for.
+
+Switching the backlight fully off during the screensaver instead of dimming it
+is the only lever that really moves the number — roughly 15 h on 2000 mAh, over
+20 h on 3000 mAh — and it costs you the clock at night.
+
+So a battery is good for riding out a power cut, or for moving the panel around
+for an evening. It is not a way to run a wall panel permanently: even a large
+cell needs charging daily, and at 500 mA that takes some five hours. For a
+fixed installation, wire it. At 0.7 W it costs under two euros a year to run.
+
+These figures are derived from the vendor's 140 mA / 0.7 W display-only rating,
+not measured.
 
 For the enclosure, mind the **connector angle** rather than the cable: a
 straight USB-C plug adds around 20 mm to the depth, so a right-angle connector
