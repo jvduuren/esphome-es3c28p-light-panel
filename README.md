@@ -21,10 +21,12 @@ not inferred from datasheets. If you own this board, the
 | MCU | ESP32-S3-WROOM-1 **N16R8** — 16 MB flash, 8 MB octal PSRAM |
 | Display | ILI9341**V**, 240x320 IPS, 4-wire SPI |
 | Touch | **FT6336G** capacitive, I²C `0x38` |
-| Audio | ES8311 codec, I²C `0x18`, plus an on-board microphone (present, unused here) |
+| Audio | ES8311 codec, I²C `0x18`, on-board microphone and an external speaker header (unused here) |
 | Storage | MicroSD over SDIO (unused here) |
 | RGB LED | WS2812B on GPIO42 |
-| Size | 50.0 x 86.0 x 10.6 mm |
+| Power | 5 V in over USB-C; on-board charging for a 3.7 V LiPo (not included) |
+| Size | 50.0 x 86.0 x 10.6 mm; active display area 43.2 x 57.6 mm |
+| Temperature | -30 to 80 °C operating |
 
 ### Pinout
 
@@ -40,6 +42,32 @@ not inferred from datasheets. If you own this board, the
 **The LCD reset is tied to the module's RST line, not to a GPIO.** Do not set
 `reset_pin` on the display — configs copied from generic ILI9341 tutorials
 will fight the hardware here.
+
+### Power and mechanical
+
+Figures from the vendor manual, which matter if you are designing an enclosure
+or picking a supply:
+
+| | |
+|---|---|
+| Display only | 140 mA, 0.7 W |
+| Display + speaker + battery charging | 560 mA, 2.8 W |
+| Active display area | 43.20 x 57.60 mm |
+| Viewable window (through the touch glass) | 45.20 x 59.45 mm |
+| Module | 50.00 x 86.00 x 10.60 mm |
+| Backlight | 4 white LEDs, 230 cd/m² with the touch layer |
+
+This config drives the display only, so **140 mA** is the number to plan for —
+any phone charger will do. The 560 mA figure assumes a speaker and battery
+charging, neither of which this project uses.
+
+The board takes a **3.7 V LiPo** with on-board charge management (4.2-6.5 V in,
+500 mA max charge current), so a cable-free wall panel is possible without
+extra hardware. Not something this config does anything with.
+
+For the enclosure, mind the **connector angle** rather than the cable: a
+straight USB-C plug adds around 20 mm to the depth, so a right-angle connector
+matters more than a flat cable if you want the panel close to the wall.
 
 ### Where to get one
 
@@ -57,6 +85,14 @@ Vendor resources: [wiki page](https://www.lcdwiki.com/2.8inch_ESP32-S3_Display),
 [3D model](https://www.lcdwiki.com/res/ES3C28P/ES3C28P_3D.zip),
 [dimensions](https://www.lcdwiki.com/res/ES3C28P/ES3C28P_Size.pdf),
 [schematic](https://www.lcdwiki.com/res/ES3C28P/2.8inch_ESP32-S3_Display_Schematic.pdf).
+
+The vendor also ships an English manual and a full product library, both over
+plain HTTP from a bare IP, so expect your browser to complain and expect the
+links to rot:
+`http://8.217.75.21/Industrial/Multilingual/CBAA0051-037_UK.pdf` and
+`http://8.217.75.21/Industrial/Multilingual/AM15-FBBA0125-AAB-ProductLibrary.zip`.
+The manual's pinout and dimension pages are images, not text, so the pin table
+in this README was taken from the wiki and verified against a running board.
 
 ## Hardware notes
 
