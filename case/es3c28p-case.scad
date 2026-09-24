@@ -54,6 +54,13 @@ glass_w      = 69.20;  // touch panel, long axis
 glass_h      = 50.00;  // touch panel, short axis — the full board width
 glass_pocket = 1.00;   // how far forward the glass comes; leaves a 0.6 mm lip
 
+// The pocket has its own offset, and it is NOT win_off_x. The picture sits
+// 3 mm off centre *within the glass* — that is what the 3 mm and 9 mm black
+// borders mean — while the glass itself sits square on the board. Sharing one
+// offset moved the pocket off the glass and the glass would no longer drop in.
+glass_off_x  = 0;
+glass_off_y  = 0;
+
 /* [USB-C opening — verify on the test frame] */
 usb_w      = 13.00;  // generous: a plug moulding is wider than the connector
 usb_h      = 8.00;
@@ -156,10 +163,11 @@ module front() {
         translate([win_off_x, win_off_y, -eps])
             rrect(win_w, win_h, 2, front_t + 2 * eps);
 
-        // pocket on the inside of the bezel, to the outline of the touch
+        // Pocket on the inside of the bezel, to the outline of the touch
         // panel, so the glass comes forward instead of sitting at the back of
-        // a 2 mm tunnel
-        translate([win_off_x, win_off_y, front_t - glass_pocket])
+        // a 2 mm tunnel. Uses glass_off, not win_off: the glass is square on
+        // the board even though the picture on it is not.
+        translate([glass_off_x, glass_off_y, front_t - glass_pocket])
             rrect(glass_w + 2 * fit, glass_h + 2 * fit, 1,
                   glass_pocket + eps);
 
@@ -275,7 +283,7 @@ module test_frame() {
             rrect(win_w, win_h, 2, front_t + 2 * eps);
 
         // the glass pocket, which is the whole point of reprinting this
-        translate([win_off_x, win_off_y, front_t - glass_pocket])
+        translate([glass_off_x, glass_off_y, front_t - glass_pocket])
             rrect(glass_w + 2 * fit, glass_h + 2 * fit, 1, glass_pocket + eps);
 
         // hole positions, drilled right through

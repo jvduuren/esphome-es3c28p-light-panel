@@ -36,6 +36,12 @@ other, which is exactly what the first test print did.
 If your board differs, the offset is half the difference between the two black
 borders.
 
+**The window and the glass pocket have separate offsets, and they must.** The
+picture is off centre *within the glass*; the glass itself sits square on the
+board. Moving both together puts the pocket off the glass and the board will
+not seat. `win_off_x` moves the opening, `glass_off_x` moves the pocket, and
+for this board that is -3.00 and 0.
+
 ## Print the test frame first
 
 Seriously. Set `part = "test"` and print that before anything else — a few
