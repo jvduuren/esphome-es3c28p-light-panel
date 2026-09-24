@@ -286,6 +286,7 @@ Also note that the ESP-IDF installer refuses to run under MSYS/Git Bash
 | [`touchpanel.yaml`](touchpanel.yaml) | the panel |
 | [`bringup.yaml`](bringup.yaml) | diagnostic config: corner keys for checking rotation and colour order, plus touch coordinate logging |
 | [`secrets.yaml.example`](secrets.yaml.example) | template; `secrets.yaml` is gitignored |
+| [`case/`](case/) | printable wall-mount enclosure, parametric OpenSCAD plus rendered STLs |
 
 `bringup.yaml` is worth keeping. If anything ever looks wrong with wiring or
 orientation, flashing it answers the question in one glance: red top-left,
