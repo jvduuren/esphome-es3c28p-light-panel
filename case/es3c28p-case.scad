@@ -127,6 +127,11 @@ screw_depth = post_h + front_t - bezel_keep;         // usable thread depth
 // how deep the board sits.
 peg_h = (front_t + inner_d) - (pcb_front_z + pcb_t) - peg_clearance;
 
+// Distance from the rear face to the near edge of the snap feature. Groove and
+// rib are both derived from this one number: when they were computed
+// separately they ended up 0.75 mm apart and only half the rib engaged.
+snap_from_rear = back_t + snap_inset;
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -177,7 +182,7 @@ module front() {
             cube([wall * 2, usb_w, usb_h], center = true);
 
         // snap groove, running right round the inside near the rear edge
-        translate([0, 0, outer_d - back_t - snap_inset - snap_h / 2])
+        translate([0, 0, outer_d - snap_from_rear - snap_h])
             difference() {
                 rrect(inner_w + 2 * snap_depth, inner_h + 2 * snap_depth,
                       pcb_r + fit + snap_depth, snap_h);
@@ -227,7 +232,7 @@ module back() {
                 }
 
             // rib that catches in the groove
-            translate([0, 0, back_t + lip_h - snap_inset - snap_h])
+            translate([0, 0, snap_from_rear])
                 difference() {
                     rrect(inner_w - 0.20 + 2 * snap_depth,
                           inner_h - 0.20 + 2 * snap_depth,
