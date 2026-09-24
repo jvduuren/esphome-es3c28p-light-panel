@@ -4,16 +4,30 @@ A parametric case for the LCDWIKI ES3C28P, in landscape orientation. The board
 screws in on M3, the shell closes with a snap-fit groove, and the back plate has
 two keyhole slots for wall screws. USB-C exits straight out of the right side.
 
-Outer size **91.6 x 55.6 x 15.8 mm**.
+Outer size **91.6 x 55.6 x 14.4 mm**.
 
 Source: [`es3c28p-case.scad`](es3c28p-case.scad). Every dimension is a named
 parameter at the top of the file.
 
+## The glass sits nearly flush
+
+The inside of the bezel is pocketed to the outline of the touch panel, so the
+glass comes forward and only a **0.6 mm lip** is left in front of it. Without
+that pocket you look at the picture down the full bezel thickness, which reads
+as a recessed screen and throws a shadow line around the image.
+
+`glass_pocket` controls it. Raising it to `front_t` removes the lip entirely and
+makes the glass the outer surface, which looks best — but the touch panel spans
+the full board width, so a flush opening leaves only 2.5 mm of frame above and
+below it and exposes the glass edges. The 0.6 mm lip is the compromise: flush to
+the eye, still a continuous frame.
+
 ## Print the test frame first
 
-Seriously. Set `part = "test"` and print that before anything else — it is a
-3 mm sliver, a few grams, about fifteen minutes. It checks the board outline,
-the four hole positions, the window alignment and the USB-C notch.
+Seriously. Set `part = "test"` and print that before anything else — a few
+grams, about twenty minutes. It is deep enough to hold the board, so it checks
+the outline, the four hole positions, the window alignment, the USB-C notch and
+how flush the glass ends up sitting.
 
 The reason for the caution: every dimension here was read out of the vendor's
 drawing `ES3C28P_Size.pdf` as **text**, because the drawing itself is an image
