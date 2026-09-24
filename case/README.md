@@ -56,13 +56,32 @@ bridge distances an A1 handles without help.
 
 ## Assembly
 
-1. Drop the board into the front shell, glass against the inside of the bezel.
-   The four posts set the depth so the glass sits flush.
-2. Four M3 screws, 6 mm, through the board into the posts. They self-tap into
-   the 2.5 mm pilot holes. Do not overtighten — it is plastic.
-3. Press the back plate on until the rib clicks into the groove.
+**No fasteners are needed** beyond the two screws that put the back plate on
+the wall.
 
-If you would rather use heat-set inserts or nuts, set `boss_pilot = 3.20`.
+1. Screw the back plate to the wall through its keyhole slots.
+2. Drop the board onto the four pegs. The spigots enter its mounting holes and
+   locate it; the shoulders set how far back it sits.
+3. Press the front on until the rib clicks into the groove. That squeezes the
+   glass against the bezel and the board against the pegs.
+
+To take it apart, lever the front off. The board lifts straight out.
+
+This is `retention = "clamp"`, the default. The pegs are deliberately 0.2 mm
+short of the board so the bezel, not the pegs, decides the depth — the glass
+should end up against the bezel, not hanging off the pegs.
+
+### If the clamp is not tight enough
+
+The snap fit is load bearing in this arrangement, which is the one thing here
+that cannot be checked on paper. If the front does not grip convincingly,
+switch to `retention = "screws"` and re-render. The pegs disappear, posts
+appear in the front, and you fasten the board with **four M3 x 6 pan head**
+screws self-tapping into the 2.5 mm pilots. Do not overtighten; it is plastic.
+
+Heat-set inserts will not fit: an M3 insert wants roughly 4.2 mm of hole and
+5.7 mm of depth, and there is only 4.3 mm available before the pilot would
+break through the visible face.
 
 ## Tuning for your printer
 
@@ -72,7 +91,8 @@ If you would rather use heat-set inserts or nuts, set `boss_pilot = 3.20`.
 | `snap_depth` | How hard the lid clicks. Lower it if the back will not go on, raise it if it falls off. |
 | `win_off_x`, `win_off_y` | Nudge the window if the picture sits off centre. |
 | `usb_off_y`, `usb_w`, `usb_h` | The USB-C opening. Verify this on the test frame. |
-| `boss_pilot` | 2.50 for self-tapping M3, 3.20 for nuts or inserts. |
+| `retention` | `clamp` for pegs on the back plate, `screws` for posts in the front. |
+| `peg_clearance` | How much the pegs fall short. Raise it if the front will not close. |
 
 ## A note on the proportions
 

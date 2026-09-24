@@ -55,6 +55,21 @@ usb_h      = 8.00;
 usb_off_y  = 0;      // along the short axis, 0 = centred on the edge
 usb_off_z  = 1.50;   // towards the back: the connector sits on the rear face
 
+/* [How the board is held] */
+// clamp  : pegs on the back plate carry the board, the bezel presses on the
+//          glass, and the snap fit holds the sandwich together. No fasteners
+//          at all. The snap becomes load bearing, so print it first and check
+//          it grips before committing.
+// screws : posts in the front, four M3 x 6. Use this if the clamp ends up
+//          loose, or if you want the front removable without disturbing the
+//          board.
+retention = "clamp";  // [clamp, screws]
+
+peg_od        = 5.50;
+peg_spigot_d  = 3.00;  // enters the board's 3.2 mm hole to locate it
+peg_spigot_h  = 1.40;  // shorter than the 1.6 mm board, so it cannot foul
+peg_clearance = 0.20;  // pegs deliberately short; the bezel sets the depth
+
 /* [Fit and tolerances — tune for your printer] */
 fit        = 0.30;   // clearance around the board
 wall       = 2.50;
@@ -62,7 +77,9 @@ front_t    = 1.60;   // bezel thickness
 back_t     = 2.00;   // lid thickness
 back_gap   = 1.20;   // air behind the tallest component
 boss_od     = 5.50;
-boss_pilot  = 2.50;  // M3 self-tapping; use 3.20 if you want nuts or inserts
+boss_pilot  = 2.50;  // M3 self-tapping into plastic
+bezel_keep  = 0.60;  // material left in front of the pilot hole, so it stays
+                     // blind and no hole shows on the visible face
 snap_depth  = 0.80;
 snap_h      = 1.50;
 snap_inset  = 2.50;  // distance of the groove from the rear edge
@@ -89,8 +106,14 @@ outer_h = inner_h + 2 * wall;
 outer_d = front_t + inner_d + back_t;
 outer_r = pcb_r + wall + fit;
 
-pcb_front_z = front_t - glass_pocket + glass_above;  // front face of the PCB
 post_h      = glass_above - glass_pocket;            // posts the PCB rests on
+pcb_front_z = front_t - glass_pocket + glass_above;  // front face of the PCB
+screw_depth = post_h + front_t - bezel_keep;         // usable thread depth
+
+// Distance from the inside of the back plate to the back of the board. The
+// pegs are this tall, less a whisker, so the bezel and not the pegs decides
+// how deep the board sits.
+peg_h = (front_t + inner_d) - (pcb_front_z + pcb_t) - peg_clearance;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -114,11 +137,11 @@ module at_holes() {
 // ---------------------------------------------------------------------------
 
 module front() {
-    difference() {
-        union() {
-            // outer body
-            rrect(outer_w, outer_h, outer_r, outer_d);
-        }
+  difference() {
+    union() {
+      difference() {
+        // outer body
+        rrect(outer_w, outer_h, outer_r, outer_d);
 
         // cavity for the board and its components
         translate([0, 0, front_t])
@@ -148,17 +171,24 @@ module front() {
                 translate([0, 0, -eps])
                     rrect(inner_w - 1, inner_h - 1, pcb_r, snap_h + 2 * eps);
             }
+      }
+
+      // Posts the board screws onto. Their height puts the glass against the
+      // inside of the bezel, which is what keeps the front flush.
+      // Absent in clamp mode, where the back plate carries the board instead.
+      if (retention == "screws")
+          translate([0, 0, front_t])
+              at_holes() cylinder(d = boss_od, h = post_h);
     }
 
-    // posts the board screws onto. Their height puts the glass against the
-    // inside of the bezel, which is what keeps the front flush.
-    translate([0, 0, front_t])
-        at_holes()
-            difference() {
-                cylinder(d = boss_od, h = post_h);
-                translate([0, 0, -eps])
-                    cylinder(d = boss_pilot, h = post_h + 6);
-            }
+    // The pilot hole runs on into the bezel and stops bezel_keep short of the
+    // outside, so a 3.3 mm post still gives 4.3 mm of thread engagement
+    // without a hole appearing on the visible face. Drilled from the whole
+    // body, not just the post, which is why the posts are unioned in first.
+    if (retention == "screws")
+        translate([0, 0, front_t + post_h - screw_depth])
+            at_holes() cylinder(d = boss_pilot, h = screw_depth + eps);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -190,6 +220,18 @@ module back() {
                         rrect(inner_w - 3.2, inner_h - 3.2, pcb_r,
                               snap_h + 2 * eps);
                 }
+
+            // Pegs that carry the board in clamp mode. The shoulder sets how
+            // far back the board sits and the spigot drops into its mounting
+            // hole, so the board cannot shift sideways. Note the pegs land
+            // where the screw posts would be, so only ever one or the other.
+            if (retention == "clamp")
+                translate([0, 0, back_t])
+                    at_holes() {
+                        cylinder(d = peg_od, h = peg_h);
+                        translate([0, 0, peg_h - eps])
+                            cylinder(d = peg_spigot_d, h = peg_spigot_h);
+                    }
         }
 
         // keyhole slots for wall screws
