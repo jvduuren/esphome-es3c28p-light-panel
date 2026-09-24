@@ -36,15 +36,29 @@ win_h      = 44.20;
 win_off_x  = 0;      // nudge if the window looks off centre on the test frame
 win_off_y  = 0;
 
+/* [Glass recess] */
+// Without this the glass sits the full bezel thickness back and you look at
+// the picture down a tunnel. This pockets the inside of the bezel to the
+// outline of the touch panel, so the glass moves forward and only a thin lip
+// is left in front of it. The lip ends up front_t - glass_pocket thick.
+//
+// Set glass_pocket = front_t for a fully flush front: the glass then becomes
+// the outer surface. That looks best but leaves a visible seam around the
+// glass and only 2.5 mm of bezel above and below it, so it is fragile.
+glass_w      = 69.20;  // touch panel, long axis
+glass_h      = 50.00;  // touch panel, short axis — the full board width
+glass_pocket = 1.00;   // how far forward the glass comes; leaves a 0.6 mm lip
+
 /* [USB-C opening — verify on the test frame] */
 usb_w      = 13.00;  // generous: a plug moulding is wider than the connector
 usb_h      = 8.00;
 usb_off_y  = 0;      // along the short axis, 0 = centred on the edge
+usb_off_z  = 1.50;   // towards the back: the connector sits on the rear face
 
 /* [Fit and tolerances — tune for your printer] */
 fit        = 0.30;   // clearance around the board
 wall       = 2.50;
-front_t    = 2.00;   // bezel thickness
+front_t    = 1.60;   // bezel thickness
 back_t     = 2.00;   // lid thickness
 back_gap   = 1.20;   // air behind the tallest component
 boss_od     = 5.50;
@@ -65,11 +79,18 @@ eps = 0.01;
 
 inner_w = pcb_w + 2 * fit;
 inner_h = pcb_h + 2 * fit;
-inner_d = glass_above + pcb_t + comp_below + back_gap;
+
+// The glass pocket pulls the whole board forward by glass_pocket, so the depth
+// behind it shrinks by the same amount and the posts get shorter to match.
+// Getting this wrong means the board will not seat against the bezel.
+inner_d = glass_above + pcb_t + comp_below - glass_pocket + back_gap;
 outer_w = inner_w + 2 * wall;
 outer_h = inner_h + 2 * wall;
 outer_d = front_t + inner_d + back_t;
 outer_r = pcb_r + wall + fit;
+
+pcb_front_z = front_t - glass_pocket + glass_above;  // front face of the PCB
+post_h      = glass_above - glass_pocket;            // posts the PCB rests on
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -107,9 +128,16 @@ module front() {
         translate([win_off_x, win_off_y, -eps])
             rrect(win_w, win_h, 2, front_t + 2 * eps);
 
+        // pocket on the inside of the bezel, to the outline of the touch
+        // panel, so the glass comes forward instead of sitting at the back of
+        // a 2 mm tunnel
+        translate([win_off_x, win_off_y, front_t - glass_pocket])
+            rrect(glass_w + 2 * fit, glass_h + 2 * fit, 1,
+                  glass_pocket + eps);
+
         // USB-C, straight out of the +X side
         translate([outer_w / 2 - wall / 2, usb_off_y,
-                   front_t + glass_above + pcb_t / 2])
+                   pcb_front_z + pcb_t / 2 + usb_off_z])
             cube([wall * 2, usb_w, usb_h], center = true);
 
         // snap groove, running right round the inside near the rear edge
@@ -127,9 +155,9 @@ module front() {
     translate([0, 0, front_t])
         at_holes()
             difference() {
-                cylinder(d = boss_od, h = glass_above);
+                cylinder(d = boss_od, h = post_h);
                 translate([0, 0, -eps])
-                    cylinder(d = boss_pilot, h = glass_above + 6);
+                    cylinder(d = boss_pilot, h = post_h + 6);
             }
 }
 
@@ -182,17 +210,23 @@ module back() {
 // ---------------------------------------------------------------------------
 
 module test_frame() {
-    t = 3.0;
+    // Deep enough to actually hold the board, so the glass drops into the
+    // pocket and you can see how flush the front sits.
+    t = front_t + 3.5;
     difference() {
         rrect(outer_w, outer_h, outer_r, t);
 
         // board outline, so you can drop the board in and check the fit
-        translate([0, 0, 1.2])
+        translate([0, 0, front_t])
             rrect(inner_w, inner_h, pcb_r + fit, t);
 
         // window, to check it lines up with the picture
         translate([win_off_x, win_off_y, -eps])
-            rrect(win_w, win_h, 2, 1.2 + 2 * eps);
+            rrect(win_w, win_h, 2, front_t + 2 * eps);
+
+        // the glass pocket, which is the whole point of reprinting this
+        translate([win_off_x, win_off_y, front_t - glass_pocket])
+            rrect(glass_w + 2 * fit, glass_h + 2 * fit, 1, glass_pocket + eps);
 
         // hole positions, drilled right through
         translate([0, 0, -eps])
