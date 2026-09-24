@@ -76,8 +76,15 @@ should end up against the bezel, not hanging off the pegs.
 The snap fit is load bearing in this arrangement, which is the one thing here
 that cannot be checked on paper. If the front does not grip convincingly,
 switch to `retention = "screws"` and re-render. The pegs disappear, posts
-appear in the front, and you fasten the board with **four M3 x 6 pan head**
+appear in the front, and you fasten the board with **four M3 x 5 pan head**
 screws self-tapping into the 2.5 mm pilots. Do not overtighten; it is plastic.
+
+Five millimetres, not six. There is 5.90 mm between the back of the board and
+the bottom of the pilot hole, so an M3 x 6 bottoms out with its tip 0.10 mm
+short and forcing it pushes through the 0.6 mm of bezel that is keeping the
+screw invisible. An M3 x 5 still takes 3.4 mm of thread and leaves 0.9 mm
+spare. Nothing shows on the outside either way: the pilots are blind and the
+back plate covers the heads.
 
 Heat-set inserts will not fit: an M3 insert wants roughly 4.2 mm of hole and
 5.7 mm of depth, and there is only 4.3 mm available before the pilot would
