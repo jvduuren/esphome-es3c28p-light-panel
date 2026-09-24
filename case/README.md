@@ -22,6 +22,20 @@ the full board width, so a flush opening leaves only 2.5 mm of frame above and
 below it and exposes the glass edges. The 0.6 mm lip is the compromise: flush to
 the eye, still a continuous frame.
 
+## The display is not centred on the board
+
+Measured on hardware: the picture sits **3 mm off centre**, towards the
+microphone end. The black glass border is 3 mm on that side and 9 mm on the
+USB-C side. The vendor drawing says nothing about this — it gives the display
+and board sizes but not where one sits on the other.
+
+`win_off_x = -3.00` accounts for it. Centring the window instead leaves 3 mm of
+bare glass showing at the USB end while the bezel eats 3 mm of picture at the
+other, which is exactly what the first test print did.
+
+If your board differs, the offset is half the difference between the two black
+borders.
+
 ## Print the test frame first
 
 Seriously. Set `part = "test"` and print that before anything else — a few

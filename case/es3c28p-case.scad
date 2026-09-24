@@ -33,7 +33,12 @@ comp_below  = 4.70;  // tallest component on the back
 // not creep into the picture if the board sits a hair off centre.
 win_w      = 58.60;
 win_h      = 44.20;
-win_off_x  = 0;      // nudge if the window looks off centre on the test frame
+// Measured on hardware 2026-09-24: the display sits 3 mm off centre on the
+// board, towards the microphone end. The vendor drawing does not mention this.
+// Centring the window left 3 mm of bare glass showing at the USB end while the
+// bezel covered 3 mm of picture at the other. Both observations independently
+// give -3.00, and at that offset the margin is 0.275 mm on each side.
+win_off_x  = -3.00;
 win_off_y  = 0;
 
 /* [Glass recess] */
@@ -176,9 +181,12 @@ module front() {
       // Posts the board screws onto. Their height puts the glass against the
       // inside of the bezel, which is what keeps the front flush.
       // Absent in clamp mode, where the back plate carries the board instead.
+      // Started at the pocket floor rather than at the bezel face. Now that
+      // the pocket is offset, a post can straddle its edge, and this keeps the
+      // base on solid material either way. The top ends up unchanged.
       if (retention == "screws")
-          translate([0, 0, front_t])
-              at_holes() cylinder(d = boss_od, h = post_h);
+          translate([0, 0, front_t - glass_pocket])
+              at_holes() cylinder(d = boss_od, h = post_h + glass_pocket);
     }
 
     // The pilot hole runs on into the bezel and stops bezel_keep short of the
