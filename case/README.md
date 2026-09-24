@@ -4,23 +4,34 @@ A parametric case for the LCDWIKI ES3C28P, in landscape orientation. The board
 screws in on M3, the shell closes with a snap-fit groove, and the back plate has
 two keyhole slots for wall screws. USB-C exits straight out of the right side.
 
-Outer size **91.6 x 55.6 x 14.4 mm**.
+Outer size **91.6 x 55.6 x 13.8 mm**.
 
 Source: [`es3c28p-case.scad`](es3c28p-case.scad). Every dimension is a named
 parameter at the top of the file.
 
-## The glass sits nearly flush
+## The glass is flush with the front
 
-The inside of the bezel is pocketed to the outline of the touch panel, so the
-glass comes forward and only a **0.6 mm lip** is left in front of it. Without
-that pocket you look at the picture down the full bezel thickness, which reads
-as a recessed screen and throws a shadow line around the image.
+The opening goes right through the bezel and the glass fills it, so the two end
+up level. Printed in black the whole front reads as a single surface, with only
+a 0.3 mm seam around the glass.
 
-`glass_pocket` controls it. Raising it to `front_t` removes the lip entirely and
-makes the glass the outer surface, which looks best — but the touch panel spans
-the full board width, so a flush opening leaves only 2.5 mm of frame above and
-below it and exposes the glass edges. The 0.6 mm lip is the compromise: flush to
-the eye, still a continuous frame.
+That is `front_style = "flush"`, the default. Two things follow from it.
+
+The board is no longer held by its glass. The opening is 69.8 x 50.6 mm while
+the board is 86 x 50, so 8.1 mm of bare PCB at each end sits behind the bezel
+and that is what stops it coming forward.
+
+And nothing presses on the glass any more, so the **pegs alone decide how deep
+the board sits**. `peg_clearance` therefore becomes exactly how far the glass
+ends up below the surface: 0.1 mm, deliberately a touch under, because glass
+standing proud of the bezel would catch a fingernail.
+
+A side effect worth having: with no bezel framing the picture, the display
+being 3 mm off centre stops mattering.
+
+`front_style = "lip"` is the alternative, leaving `glass_lip` of bezel in front
+of the glass edge. No seam and a little sturdier, but the screen sits below the
+surface and you see the step.
 
 ## The display is not centred on the board
 

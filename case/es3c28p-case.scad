@@ -50,9 +50,21 @@ win_off_y  = 0;
 // Set glass_pocket = front_t for a fully flush front: the glass then becomes
 // the outer surface. That looks best but leaves a visible seam around the
 // glass and only 2.5 mm of bezel above and below it, so it is fragile.
-glass_w      = 69.20;  // touch panel, long axis
-glass_h      = 50.00;  // touch panel, short axis — the full board width
-glass_pocket = 1.00;   // how far forward the glass comes; leaves a 0.6 mm lip
+// flush : the opening goes right through and the glass fills it, so glass and
+//         bezel end up level. Print in black and the whole front reads as one
+//         surface. The board is then held by its own ends, which overlap the
+//         bezel by 8.4 mm either side — the glass carries nothing.
+//         A side effect worth having: the picture being 3 mm off centre stops
+//         mattering, because the bezel no longer frames the picture at all.
+// lip   : a thin rim of bezel stays in front of the glass edge. Slightly more
+//         robust and no gap line, but the screen sits glass_lip below the
+//         surface and you see the step.
+front_style = "flush";  // [flush, lip]
+glass_lip   = 0.60;     // material in front of the glass, "lip" style only
+glass_gap   = 0.30;     // clearance round the glass; in flush style this is
+                        // the visible seam, so tighten it if your printer can
+glass_w      = 69.20;   // touch panel, long axis
+glass_h      = 50.00;   // touch panel, short axis — the full board width
 
 // The pocket has its own offset, and it is NOT win_off_x. The picture sits
 // 3 mm off centre *within the glass* — that is what the 3 mm and 9 mm black
@@ -80,7 +92,12 @@ retention = "clamp";  // [clamp, screws]
 peg_od        = 5.50;
 peg_spigot_d  = 3.00;  // enters the board's 3.2 mm hole to locate it
 peg_spigot_h  = 1.40;  // shorter than the 1.6 mm board, so it cannot foul
-peg_clearance = 0.20;  // pegs deliberately short; the bezel sets the depth
+// In lip style the bezel presses on the glass and this is just slack behind
+// the board. In flush style nothing presses on the glass, so the pegs alone
+// decide how deep the board sits and this becomes exactly how far the glass
+// ends up below the surface. Slightly under is right: glass standing proud of
+// the bezel would catch a fingernail.
+peg_clearance = 0.10;
 
 /* [Fit and tolerances — tune for your printer] */
 fit        = 0.30;   // clearance around the board
@@ -105,6 +122,10 @@ keyhole_drop    = 6.00;
 /* [Hidden] */
 $fn = 64;
 eps = 0.01;
+
+// In flush style the pocket is the full bezel thickness, so nothing is left in
+// front of the glass and the two end up level.
+glass_pocket = (front_style == "flush") ? front_t : front_t - glass_lip;
 
 inner_w = pcb_w + 2 * fit;
 inner_h = pcb_h + 2 * fit;
@@ -173,7 +194,7 @@ module front() {
         // a 2 mm tunnel. Uses glass_off, not win_off: the glass is square on
         // the board even though the picture on it is not.
         translate([glass_off_x, glass_off_y, front_t - glass_pocket])
-            rrect(glass_w + 2 * fit, glass_h + 2 * fit, 1,
+            rrect(glass_w + 2 * glass_gap, glass_h + 2 * glass_gap, 1,
                   glass_pocket + eps);
 
         // USB-C, straight out of the +X side
@@ -289,7 +310,7 @@ module test_frame() {
 
         // the glass pocket, which is the whole point of reprinting this
         translate([glass_off_x, glass_off_y, front_t - glass_pocket])
-            rrect(glass_w + 2 * fit, glass_h + 2 * fit, 1, glass_pocket + eps);
+            rrect(glass_w + 2 * glass_gap, glass_h + 2 * glass_gap, 1, glass_pocket + eps);
 
         // hole positions, drilled right through
         translate([0, 0, -eps])
