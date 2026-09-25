@@ -98,7 +98,7 @@ hook_depth  = 1.00;   // how far it stands proud of the rim
 hook_h      = 1.60;
 hook_play   = 0.60;   // extra groove height, so the front can pivot in
 
-pry_w       = 14.00;  // slot to lever the front off again, bottom edge only
+pry_w       = 10.00;  // two slots, one per tab, in the bottom rear edge
 pry_h       = 2.00;
 
 /* [Fit and tolerances] */
@@ -195,11 +195,15 @@ module front() {
                    pcb_back_z - pcb_t / 2 + usb_off_z])
             cube([wall + ring + 2 * eps, usb_w, usb_h], center = true);
 
-        // Pry slot at the bottom rear edge, between the two tabs. Only one is
-        // needed: lever here and the bottom releases, then the front lifts off
+        // Pry slots at the bottom rear edge, one directly opposite each tab.
+        // Levering midway between them would mean bending the whole bottom
+        // wall to release two catches 22 mm away; here the leverage lands
+        // exactly where the barb holds, and either tab can be freed on its
+        // own. Lever here and the bottom releases, then the front lifts off
         // the top hook.
-        translate([0, -outer_h / 2, outer_d - pry_h / 2 + eps])
-            cube([pry_w, 2 * wall + 2 * eps, pry_h], center = true);
+        for (t = tabs)
+            translate([t[0], -outer_h / 2, outer_d - pry_h / 2 + eps])
+                cube([pry_w, 2 * wall + 2 * eps, pry_h], center = true);
 
         // channel for the top hook. Taller than the ledge so the front can
         // pivot down onto it instead of having to be sprung over it.

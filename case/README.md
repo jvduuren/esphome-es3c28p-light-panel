@@ -101,9 +101,13 @@ That traps the board between the pegs behind and four stops inside the bezel.
 
 ## Taking it apart again
 
-There is a pry slot in the bottom rear edge, between the two tabs. Put a flat
-screwdriver in and twist: the bottom releases, and the front lifts off the top
-hook.
+There are two pry slots in the bottom rear edge, one directly opposite each
+tab. Put a flat screwdriver in and twist: the bottom releases and the front
+lifts off the top hook. Either tab can be freed on its own.
+
+One slot midway between them would have meant bending the whole bottom wall to
+release two catches 22 mm away. Opposite the tabs the leverage lands exactly
+where the barb holds.
 
 ## Why the top is a hook and only the bottom clicks
 
