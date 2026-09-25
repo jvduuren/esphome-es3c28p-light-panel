@@ -8,12 +8,12 @@
 // Dimensions come from the vendor drawing ES3C28P_Size.pdf. Where that drawing
 // was silent the value was measured on a board and is marked as such.
 //
-// PRINT part = "cliptest" BEFORE THE WHOLE CASE. It is a slice of the wall and
+// PRINT THE TWO CLIPTEST PIECES BEFORE THE WHOLE CASE. They are a slice of wall and
 // the matching slice of the lid, and it answers in fifteen minutes the one
 // question arithmetic cannot: does the snap actually grip.
 
 /* [What to render] */
-part = "front";  // [front, back, test, cliptest]
+part = "front";  // [front, back, test, cliptest-front, cliptest-back]
 
 /* [Board — from the vendor drawing, do not change] */
 pcb_w       = 86.00;  // long axis, horizontal in landscape
@@ -345,19 +345,22 @@ module test_frame() {
 // hours to the real parts.
 // ---------------------------------------------------------------------------
 
-module cliptest() {
+module cliptest_slice(is_front) {
     slice = 34;
     // Sliced along the bottom edge, where the pry slots are, so the test piece
     // shows both halves of the job: does it click, and does it come apart.
     cut_y = -(bore_h / 2 + wall / 2 + 1);
 
-    intersection() {
-        front();
-        translate([tab_x, cut_y, outer_d - 6])
-            cube([slice, 2 * wall + 6, 14], center = true);
-    }
-
-    translate([0, cut_y - 14, 0])
+    // The box spans the full height of whichever part it cuts. An earlier
+    // version started above z=0 and the wall slice came out floating, with
+    // nothing under it to print on.
+    if (is_front)
+        intersection() {
+            front();
+            translate([tab_x, cut_y, outer_d / 2])
+                cube([slice, 2 * wall + 6, outer_d + 2], center = true);
+        }
+    else
         intersection() {
             back();
             translate([tab_x, cut_y, (back_t + lip_h) / 2])
@@ -370,4 +373,5 @@ module cliptest() {
 if (part == "front") front();
 else if (part == "back") back();
 else if (part == "test") test_frame();
-else if (part == "cliptest") cliptest();
+else if (part == "cliptest-front") cliptest_slice(true);
+else if (part == "cliptest-back") cliptest_slice(false);

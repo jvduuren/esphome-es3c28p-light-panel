@@ -12,12 +12,20 @@ parameter at the top.
 
 ## Print the clip test first
 
-Set `part = "cliptest"`. It prints a slice of wall and the matching slice of
-lid — a few grams, about fifteen minutes — and answers the one question the
-arithmetic cannot: does the snap actually grip, and can you get it apart again.
+Print [`cliptest-front.stl`](cliptest-front.stl) and
+[`cliptest-back.stl`](cliptest-back.stl). Between them they are a slice of wall
+and the matching slice of lid — a few grams, about fifteen minutes — and they
+answer the one question the arithmetic cannot: does the snap actually grip, and
+can you get it apart again.
+
+The wall piece carries the groove and a pry slot; the lid piece carries a tab
+with its flex slots either side. Press them together, then lever them apart.
 
 If it grips too hard or not at all, `snap_depth` is the number. Only then commit
 to the real parts.
+
+They are two files rather than one deliberately. Two disconnected shells in a
+single STL is the sort of thing a slicer is entitled to make a mess of.
 
 `part = "test"` is the older fit check for the board outline and the glass
 opening. Both of those are confirmed on hardware, so you can skip it unless you
@@ -144,7 +152,8 @@ Rendered STLs are checked in, so you do not need OpenSCAD to print this.
 
 | | |
 |---|---|
-| [`cliptest.stl`](cliptest.stl) | snap check, print this first |
+| [`cliptest-front.stl`](cliptest-front.stl) | wall slice with groove and pry slot |
+| [`cliptest-back.stl`](cliptest-back.stl) | lid slice with one sprung tab |
 | [`front.stl`](front.stl) | bezel, walls, board stops |
 | [`back.stl`](back.stl) | lid with rim, tabs, pegs and keyholes |
 | [`test-frame.stl`](test-frame.stl) | board and glass fit check |
@@ -153,10 +162,11 @@ To re-render after changing a parameter you need
 [OpenSCAD](https://openscad.org/):
 
 ```bash
-openscad -D 'part="cliptest"' -o cliptest.stl   es3c28p-case.scad
-openscad -D 'part="front"'    -o front.stl      es3c28p-case.scad
-openscad -D 'part="back"'     -o back.stl       es3c28p-case.scad
-openscad -D 'part="test"'     -o test-frame.stl es3c28p-case.scad
+openscad -D 'part="cliptest-front"' -o cliptest-front.stl es3c28p-case.scad
+openscad -D 'part="cliptest-back"'  -o cliptest-back.stl  es3c28p-case.scad
+openscad -D 'part="front"'          -o front.stl          es3c28p-case.scad
+openscad -D 'part="back"'           -o back.stl           es3c28p-case.scad
+openscad -D 'part="test"'           -o test-frame.stl     es3c28p-case.scad
 ```
 
 Slicers read STL, not `.scad`.
