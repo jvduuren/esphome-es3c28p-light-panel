@@ -139,7 +139,8 @@ push cost nothing and cannot be assembled wrong.
 | Parameter | What it does |
 |---|---|
 | `snap_depth` | How hard the lid clicks. The first number to touch. |
-| `lip_clear` | Slip fit of the rim in its channel. Raise if the lid binds. |
+| `lip_fit` | Play between lid and front. Lower it if the front wobbles, raise it if the lid binds. Only affects the lid, so the front does not need reprinting. |
+| `lip_clear` | Nominal channel width, and with it the outer size. Changing this means reprinting both halves. |
 | `board_clear` | Gap beside the board. Raise if a connector fouls the rim. |
 | `peg_clearance` | Slack on the board, and how far the glass sits below the surface. |
 | `usb_w`, `usb_h`, `usb_off_z` | The USB-C opening. |

@@ -79,7 +79,11 @@ peg_clearance = 0.10;  // slack between stop and peg
 // between a snap that flexes and one that snaps off.
 board_clear = 0.80;   // between the board edge and the inside of the rim
 lip_t       = 1.40;   // rim thickness; the tabs are cut from this
-lip_clear   = 0.35;   // slip fit of the rim in its channel
+lip_clear   = 0.35;   // nominal width of the rim channel, and so the case size
+// Actual clearance of the rim in that channel. Kept separate from lip_clear so
+// it can be tightened without resizing the bore, which would mean reprinting
+// the front too. At 0.35 the front was perceptibly loose on the lid.
+lip_fit     = 0.22;
 snap_depth  = 0.80;   // barb beyond the rim face; engagement is this minus
                       // lip_clear, so 0.45 mm
 snap_h      = 1.60;
@@ -130,8 +134,8 @@ screw_depth = stop_h + front_t - 0.60;       // blind, 0.6 mm of bezel left
 
 // Rim reaches down beside the board to just short of its front face.
 lip_h  = (front_t + inner_d) - (pcb_front_z - 0.50);
-lip_ox = bore_w / 2 - lip_clear;
-lip_oy = bore_h / 2 - lip_clear;
+lip_ox = bore_w / 2 - lip_fit;
+lip_oy = bore_h / 2 - lip_fit;
 
 // Barb position, expressed once so the groove and the barb cannot drift apart.
 // They did once, by 0.75 mm, and only half the barb engaged.
@@ -300,13 +304,18 @@ module back() {
             cube([4 * (lip_t + snap_depth), usb_w + 3.0, lip_h + 2 * eps],
                  center = true);
 
-        // keyhole slots for wall screws
+        // Keyhole slots for wall screws. Big hole low, slot running up: the
+        // head passes through the opening and the panel then drops, leaving
+        // the screw at the top of the slot carrying the weight. Built the
+        // other way round you would have to lift the panel for it to catch,
+        // which is not something gravity does. It was built the other way
+        // round.
         for (x = [-keyhole_spacing / 2, keyhole_spacing / 2])
             translate([x, 0, -eps]) {
                 cylinder(d = keyhole_big, h = back_t + 2 * eps);
-                translate([0, -keyhole_drop, 0])
+                translate([0, keyhole_drop, 0])
                     cylinder(d = keyhole_small, h = back_t + 2 * eps);
-                translate([0, -keyhole_drop / 2, back_t / 2 + eps])
+                translate([0, keyhole_drop / 2, back_t / 2 + eps])
                     cube([keyhole_small, keyhole_drop, back_t + 2 * eps],
                          center = true);
             }
