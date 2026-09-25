@@ -135,6 +135,12 @@ lip_oy = bore_h / 2 - lip_clear;
 
 // Barb position, expressed once so the groove and the barb cannot drift apart.
 // They did once, by 0.75 mm, and only half the barb engaged.
+// The front stops short of the rear face by exactly the thickness of the back
+// plate, which fills that last slice. Building the front to the full outer
+// depth makes the two overlap by back_t, so the lid bottoms out early and the
+// barb never reaches its groove. That is what it did.
+front_d = outer_d - back_t;
+
 snap_lo_local = back_t + lip_h - snap_from_tip - snap_h;
 groove_lo_z   = outer_d - snap_lo_local - snap_h;
 
@@ -171,11 +177,11 @@ module front() {
   difference() {
     union() {
       difference() {
-        rrect(outer_w, outer_h, outer_r, outer_d);
+        rrect(outer_w, outer_h, outer_r, front_d);
 
         // the bore: board and rim channel together
         translate([0, 0, front_t])
-            rrect(bore_w, bore_h, pcb_r + ring, inner_d + back_t + eps);
+            rrect(bore_w, bore_h, pcb_r + ring, front_d - front_t + eps);
 
         // display window (subsumed by the opening in flush style)
         translate([win_off_x, win_off_y, -eps])
@@ -200,7 +206,7 @@ module front() {
         // front lifts away. Bottom only, so there is one obvious way in.
         for (t = tabs)
             if (t[1] < 0)
-                translate([t[0], -outer_h / 2, outer_d - pry_h / 2 + eps])
+                translate([t[0], -outer_h / 2, front_d - pry_h / 2 + eps])
                     cube([pry_w, 2 * wall + 2 * eps, pry_h], center = true);
 
         // a groove per tab
@@ -357,8 +363,8 @@ module cliptest_slice(is_front) {
     if (is_front)
         intersection() {
             front();
-            translate([tab_x, cut_y, outer_d / 2])
-                cube([slice, 2 * wall + 6, outer_d + 2], center = true);
+            translate([tab_x, cut_y, front_d / 2])
+                cube([slice, 2 * wall + 6, front_d + 2], center = true);
         }
     else
         intersection() {
