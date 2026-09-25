@@ -10,6 +10,16 @@ Outer size **96.1 x 60.1 x 13.8 mm**.
 Source: [`es3c28p-case.scad`](es3c28p-case.scad). Every dimension is a named
 parameter at the top.
 
+## Built and verified
+
+This has been printed and assembled, not just rendered. Confirmed on hardware:
+board outline and hole pattern, the glass sitting flush, the USB-C opening, the
+rim clearing the edge connectors, the snap gripping, and the front levering
+back off with a small screwdriver.
+
+Everything that did not work the first time is described below, because the
+reasons are more useful than the result.
+
 ## Print the clip test first
 
 Print [`cliptest-front.stl`](cliptest-front.stl) and
