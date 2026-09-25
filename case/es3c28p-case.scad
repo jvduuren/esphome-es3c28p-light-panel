@@ -89,15 +89,6 @@ tab_slot    = 1.50;   // slot either side, so each tab is a cantilever
 tab_x       = 22.00;  // the two bottom tabs, at +/- this
 back_gap    = 1.20;   // air behind the tallest component
 
-// The top edge is a rigid ledge, not a snap. The front hangs on it and then
-// swings shut, so only the bottom has to flex. That makes the top joint as
-// strong as the plastic rather than as strong as a tab, halves the force
-// needed to close it, and gives one obvious place to lever it open.
-hook_w      = 70.00;  // length of the ledge along the top edge
-hook_depth  = 1.00;   // how far it stands proud of the rim
-hook_h      = 1.60;
-hook_play   = 0.60;   // extra groove height, so the front can pivot in
-
 pry_w       = 10.00;  // two slots, one per tab, in the bottom rear edge
 pry_h       = 2.00;
 
@@ -163,8 +154,14 @@ module at_holes() {
             translate([x, y, 0]) children();
 }
 
-// Sprung tabs along the BOTTOM edge only. The top is the hook. [x, y sign]
-tabs = [[-tab_x, -1], [tab_x, -1]];
+// Four sprung tabs, two down each long side. [x offset, y sign]
+//
+// An earlier version made the top a rigid hook to hang the front on. It does
+// not work at this scale: clearing a 0.65 mm ledge means lifting the front
+// 0.65 mm, which drives the bottom rim 0.30 mm into the wall, and tilting it
+// in instead needs 0.85 mm of side clearance at 4 degrees where there is 0.35.
+// A 12 mm deep bore will not pivot into a 0.35 mm gap.
+tabs = [[-tab_x, 1], [tab_x, 1], [-tab_x, -1], [tab_x, -1]];
 
 // ---------------------------------------------------------------------------
 // Front: bezel, walls, board stops, snap grooves
@@ -202,15 +199,9 @@ module front() {
         // own. Lever here and the bottom releases, then the front lifts off
         // the top hook.
         for (t = tabs)
-            translate([t[0], -outer_h / 2, outer_d - pry_h / 2 + eps])
-                cube([pry_w, 2 * wall + 2 * eps, pry_h], center = true);
-
-        // channel for the top hook. Taller than the ledge so the front can
-        // pivot down onto it instead of having to be sprung over it.
-        translate([0, bore_h / 2 + (hook_depth + lip_clear) / 2,
-                   groove_lo_z + snap_h / 2])
-            cube([hook_w + 2.0, hook_depth + lip_clear + eps,
-                  hook_h + hook_play], center = true);
+            if (t[1] < 0)
+                translate([t[0], -outer_h / 2, outer_d - pry_h / 2 + eps])
+                    cube([pry_w, 2 * wall + 2 * eps, pry_h], center = true);
 
         // a groove per tab
         for (t = tabs)
@@ -260,11 +251,6 @@ module back() {
                         rrect(2 * (lip_ox - lip_t), 2 * (lip_oy - lip_t),
                               pcb_r + board_clear, lip_h + 2 * eps);
                 }
-
-            // The top hook: a plain rigid ledge. Nothing flexes here, so it
-            // is as strong as the plastic and takes the weight of the front.
-            translate([-hook_w / 2, lip_oy, snap_lo_local])
-                cube([hook_w, hook_depth, hook_h]);
 
             // Barbs, ramped on BOTH ends. The leading ramp lets the lid cam
             // itself in; the trailing one is what lets the front come off

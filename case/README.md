@@ -94,40 +94,37 @@ deliberate in black. A smooth plate gives a gloss finish instead.
 1. Screw the back plate to the wall through its keyhole slots.
 2. Drop the board onto the four pegs. The spigots enter its mounting holes and
    locate it.
-3. Hook the top edge of the front over the ledge on the lid, then swing the
-   bottom shut until the two tabs click.
+3. Press the front on, square. All four tabs deflect and click home.
 
 That traps the board between the pegs behind and four stops inside the bezel.
 
 ## Taking it apart again
 
-There are two pry slots in the bottom rear edge, one directly opposite each
-tab. Put a flat screwdriver in and twist: the bottom releases and the front
-lifts off the top hook. Either tab can be freed on its own.
+There are two pry slots in the bottom rear edge, one directly opposite each of
+the bottom tabs. Put a flat screwdriver in and twist: that side releases, and
+the top tabs follow as you lift the front away. Either slot works on its own.
 
 One slot midway between them would have meant bending the whole bottom wall to
 release two catches 22 mm away. Opposite the tabs the leverage lands exactly
 where the barb holds.
 
-## Why the top is a hook and only the bottom clicks
+The barbs are ramped on both faces on purpose. A one-way latch holds
+beautifully and then has to be destroyed to get the board back.
 
-The top edge is a rigid ledge, not a snap. The front hangs on it and swings
-shut, so only the bottom has to flex.
+## Why it pushes on square rather than hinging
 
-That is worth more than it sounds. The top joint is as strong as the plastic
-rather than as strong as a tab; closing it takes half the force, because only
-two tabs deflect instead of four; and there is one obvious place to lever it
-open rather than four fighting you at once.
+Hanging the front on a ledge along the top and swinging it shut is the nicer
+motion, and it was built that way for a while. It does not survive the
+arithmetic at this size:
 
-The engagements, verified in the mesh:
-
-| | grips | behaviour |
+| | needed | available |
 |---|---|---|
-| Top hook | 0.65 mm | rigid, carries the front |
-| Bottom tabs | 0.45 mm | sprung, ramped both ways so they release |
+| Lift to clear a 0.65 mm ledge | 0.65 mm | 0.35 mm before the bottom rim binds |
+| Tilt in at 4 degrees | 0.85 mm of side clearance | 0.35 mm |
 
-The barbs are ramped on both faces on purpose. A one-way latch holds beautifully
-and then has to be destroyed to get the board back.
+A 12 mm deep bore will not pivot into a 0.35 mm gap, and widening that gap
+costs the location the rim is there to provide. Four sprung tabs and a square
+push cost nothing and cannot be assembled wrong.
 
 ## Tuning for your printer
 
