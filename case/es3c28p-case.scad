@@ -196,8 +196,8 @@ module front() {
         // Levering midway between them would mean bending the whole bottom
         // wall to release two catches 22 mm away; here the leverage lands
         // exactly where the barb holds, and either tab can be freed on its
-        // own. Lever here and the bottom releases, then the front lifts off
-        // the top hook.
+        // own. Lever here and the bottom releases; the top tabs follow as the
+        // front lifts away. Bottom only, so there is one obvious way in.
         for (t = tabs)
             if (t[1] < 0)
                 translate([t[0], -outer_h / 2, outer_d - pry_h / 2 + eps])
@@ -347,8 +347,8 @@ module test_frame() {
 
 module cliptest() {
     slice = 34;
-    // Negative: the sprung tabs live on the BOTTOM edge now. Slicing the top
-    // would only show the rigid hook, which tells you nothing about the snap.
+    // Sliced along the bottom edge, where the pry slots are, so the test piece
+    // shows both halves of the job: does it click, and does it come apart.
     cut_y = -(bore_h / 2 + wall / 2 + 1);
 
     intersection() {
