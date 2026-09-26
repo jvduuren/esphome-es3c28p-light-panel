@@ -93,10 +93,10 @@ substitutions:
   # the same flip, which lands on the opposite values because its Y was
   # already inverted to begin with.
   # ======================================================================
-  disp_mirror_x:  "false"
-  disp_mirror_y:  "false"
-  touch_mirror_x: "false"
-  touch_mirror_y: "true"
+  disp_mirror_x:  "true"
+  disp_mirror_y:  "true"
+  touch_mirror_x: "true"
+  touch_mirror_y: "false"
 
   # --- LCD (SPI) ---
   lcd_sck:  GPIO12
