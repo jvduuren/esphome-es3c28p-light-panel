@@ -9,6 +9,11 @@ show up on real hardware. Everything below was verified on a physical device,
 not inferred from datasheets. If you own this board, the
 [Hardware notes](#hardware-notes) section is probably why you are here.
 
+![The finished panel in its printed case](docs/cased.png)
+
+The enclosure is in [`case/`](case/): printed in black, the glass finishes flush
+with the bezel and the whole front reads as one surface.
+
 | | |
 |---|---|
 | ![Light grid with one light on](docs/panel.png) | ![Flip-clock screensaver](docs/clock.png) |

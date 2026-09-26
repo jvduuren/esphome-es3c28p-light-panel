@@ -10,12 +10,15 @@ Outer size **96.1 x 60.1 x 13.8 mm**.
 Source: [`es3c28p-case.scad`](es3c28p-case.scad). Every dimension is a named
 parameter at the top.
 
+![The assembled case](../docs/cased.png)
+
 ## Built and verified
 
 This has been printed and assembled, not just rendered. Confirmed on hardware:
 board outline and hole pattern, the glass sitting flush, the USB-C opening, the
-rim clearing the edge connectors, the snap gripping, and the front levering
-back off with a small screwdriver.
+rim clearing the edge connectors, the snap gripping, the front levering back off
+with a small screwdriver, the keyholes hanging the right way up, and the lid
+sitting on the front without play.
 
 Everything that did not work the first time is described below, because the
 reasons are more useful than the result.
