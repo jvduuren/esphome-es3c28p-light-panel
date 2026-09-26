@@ -58,6 +58,18 @@ usb_h      = 7.00;
 usb_off_y  = 0;
 usb_off_z  = 1.50;   // towards the back; the connector sits on the rear face
 
+// Which side the cable leaves by. The board has its socket at one end, so
+// "left" means the board goes in turned 180 degrees — and then the picture and
+// the touch have to be turned with it. See the panel_* substitutions in
+// touchpanel.yaml. Nothing else about the case changes: the keyholes still
+// hang the right way up and the pry slots stay on the underside, which is why
+// this beats rotating the whole case.
+// "both" cuts the opening on both sides, so one front serves either way round.
+// Worth knowing before you choose it: the lid's rim gap is internal and the
+// keyholes face the wall, so neither shows. This one is on a visible side, and
+// the side you do not use stays a 12 x 7 mm hole.
+usb_side   = "right";  // [right, left, both]
+
 /* [How the board is held] */
 // clamp  : four pegs in the lid push the board onto four stops in the front.
 // screws : posts in the front, four M3 x 5.
@@ -112,6 +124,8 @@ $fn = 64;
 eps = 0.01;
 
 glass_pocket = (front_style == "flush") ? front_t : front_t - glass_lip;
+usb_sides = (usb_side == "both") ? [-1, 1]
+          : (usb_side == "left")  ? [-1] : [1];
 
 // The channel the rim lives in, and with it the whole outer size.
 ring    = board_clear + lip_t + lip_clear;
@@ -196,11 +210,12 @@ module front() {
             rrect(glass_w + 2 * glass_gap, glass_h + 2 * glass_gap, 1,
                   glass_pocket + eps);
 
-        // USB-C, straight out of the +X side. Deeper than the wall because
-        // the plug now has the rim channel to cross as well.
-        translate([outer_w / 2 - (wall + ring) / 2 + eps, usb_off_y,
-                   pcb_back_z - pcb_t / 2 + usb_off_z])
-            cube([wall + ring + 2 * eps, usb_w, usb_h], center = true);
+        // USB-C, straight out of the side. Deeper than the wall because the
+        // plug has the rim channel to cross as well.
+        for (sx = usb_sides)
+            translate([sx * (outer_w / 2 - (wall + ring) / 2 + eps), usb_off_y,
+                       pcb_back_z - pcb_t / 2 + usb_off_z])
+                cube([wall + ring + 2 * eps, usb_w, usb_h], center = true);
 
         // Pry slots at the bottom rear edge, one directly opposite each tab.
         // Levering midway between them would mean bending the whole bottom
@@ -299,10 +314,13 @@ module back() {
                     cube([tab_slot, 4 * (lip_t + snap_depth), lip_h + 2 * eps],
                          center = true);
 
-        // gap in the rim where the USB-C cable passes
-        translate([bore_w / 2, usb_off_y, back_t + lip_h / 2])
-            cube([4 * (lip_t + snap_depth), usb_w + 3.0, lip_h + 2 * eps],
-                 center = true);
+        // Gap in the rim where the USB-C cable passes, cut on BOTH sides so
+        // one lid serves either front. The unused gap faces the inside of the
+        // case wall, so nothing shows and nothing is weakened that matters.
+        for (sx = [-1, 1])
+            translate([sx * bore_w / 2, usb_off_y, back_t + lip_h / 2])
+                cube([4 * (lip_t + snap_depth), usb_w + 3.0, lip_h + 2 * eps],
+                     center = true);
 
         // Keyhole slots for wall screws. Big hole low, slot running up: the
         // head passes through the opening and the panel then drops, leaving
@@ -310,14 +328,21 @@ module back() {
         // other way round you would have to lift the panel for it to catch,
         // which is not something gravity does. It was built the other way
         // round.
+        // Slotted BOTH ways from the opening, so the same two holes hang the
+        // panel either way up. The screw always settles at the top of whichever
+        // slot is uppermost; the other one just sits there. Four separate
+        // keyholes would do the same job with twice the holes and two sets of
+        // positions to drill.
         for (x = [-keyhole_spacing / 2, keyhole_spacing / 2])
             translate([x, 0, -eps]) {
                 cylinder(d = keyhole_big, h = back_t + 2 * eps);
-                translate([0, keyhole_drop, 0])
-                    cylinder(d = keyhole_small, h = back_t + 2 * eps);
-                translate([0, keyhole_drop / 2, back_t / 2 + eps])
-                    cube([keyhole_small, keyhole_drop, back_t + 2 * eps],
-                         center = true);
+                for (sy = [-1, 1]) {
+                    translate([0, sy * keyhole_drop, 0])
+                        cylinder(d = keyhole_small, h = back_t + 2 * eps);
+                    translate([0, sy * keyhole_drop / 2, back_t / 2 + eps])
+                        cube([keyhole_small, keyhole_drop, back_t + 2 * eps],
+                             center = true);
+                }
             }
     }
 }
@@ -341,8 +366,10 @@ module test_frame() {
             rrect(glass_w + 2 * glass_gap, glass_h + 2 * glass_gap, 1,
                   glass_pocket + eps);
 
-        translate([outer_w / 2 - (wall + ring) / 2, usb_off_y, t / 2])
-            cube([wall + ring + 2 * eps, usb_w, t + 2 * eps], center = true);
+        for (sx = usb_sides)
+            translate([sx * (outer_w / 2 - (wall + ring) / 2), usb_off_y, t / 2])
+                cube([wall + ring + 2 * eps, usb_w, t + 2 * eps],
+                     center = true);
     }
 
     if (retention == "clamp")

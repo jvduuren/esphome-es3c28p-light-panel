@@ -75,6 +75,29 @@ substitutions:
   ui_weekdays: '"zondag", "maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag"'
   ui_months:   '"januari", "februari", "maart", "april", "mei", "juni", "juli", "augustus", "september", "oktober", "november", "december"'
 
+  # ======================================================================
+  # WHICH SIDE THE CABLE LEAVES BY
+  #
+  # The socket is at one end of the board, so putting the cable on the left
+  # means fitting the board turned 180 degrees — and then the picture and the
+  # touch have to be turned with it. Print case/front-usb-left.stl and
+  # case/back-usb-left.stl to match.
+  #
+  #   USB on the RIGHT (as below)   USB on the LEFT
+  #     disp_mirror_x:  "false"       disp_mirror_x:  "true"
+  #     disp_mirror_y:  "false"       disp_mirror_y:  "true"
+  #     touch_mirror_x: "false"       touch_mirror_x: "true"
+  #     touch_mirror_y: "true"        touch_mirror_y: "false"
+  #
+  # Rotating the picture is a mirror on both axes at once; the touch follows
+  # the same flip, which lands on the opposite values because its Y was
+  # already inverted to begin with.
+  # ======================================================================
+  disp_mirror_x:  "false"
+  disp_mirror_y:  "false"
+  touch_mirror_x: "false"
+  touch_mirror_y: "true"
+
   # --- LCD (SPI) ---
   lcd_sck:  GPIO12
   lcd_mosi: GPIO11
@@ -212,8 +235,8 @@ display:
     # this panel needed in portrait is restated here explicitly.
     transform:
       swap_xy: true
-      mirror_x: false
-      mirror_y: false
+      mirror_x: ${disp_mirror_x}
+      mirror_y: ${disp_mirror_y}
     # invert_colors and color_order were verified on hardware 2026-09-20.
     invert_colors: true
     color_order: bgr
@@ -240,11 +263,12 @@ touchscreen:
     # the same swap here, or taps land in the wrong place.
     transform:
       swap_xy: true
-      mirror_x: false
       # Measured on hardware 2026-09-21: the Y axis arrives inverted. A tap on
       # the toggle button (spanning y 152-202) reported y=59-77, i.e. exactly
-      # 240 minus the true value. X was correct.
-      mirror_y: true
+      # 240 minus the true value. X was correct. Turning the board round flips
+      # both of these, same as the display above.
+      mirror_x: ${touch_mirror_x}
+      mirror_y: ${touch_mirror_y}
     # Dismissing the screensaver. This MUST be on_release and not on_touch:
     # on_touch fires before LVGL processes the touch, so switching pages at
     # that moment makes LVGL read the still-pressed finger on the home page

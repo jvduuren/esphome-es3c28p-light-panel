@@ -90,6 +90,27 @@ where one sits on the other.
 picture is off centre within the glass; the glass sits square on the board.
 Moving both together puts the pocket off the glass and the board will not seat.
 
+## Which side the cable leaves by
+
+Print either front.stl for a cable on the right, or front-usb-left.stl for one
+on the left. The lid is the same either way.
+
+The socket is at one end of the board, so a left-hand cable means fitting the
+board turned 180 degrees, and then the picture and the touch have to be turned
+with it. The substitutions at the top of touchpanel.yaml carry both sets of
+values; swapping them is four lines.
+
+Only the opening moves. It is mirrored left to right, which leaves top and
+bottom alone, so the pry slots stay on the underside and the keyholes still
+hang the right way up. Rotating the whole case would have moved the cable too,
+but it would have put the pry slots on top and turned the keyholes upside down.
+
+The lid needs nothing changed. Its rim is notched on both sides, and the
+keyholes are slotted both ways from the opening so the panel hangs either way
+up. Neither shows: the rim gap is inside the case and the keyholes face the
+wall. The front is the one part where an unused opening would be visible, so
+that one you choose.
+
 ## Printing
 
 | | |
@@ -168,8 +189,9 @@ Rendered STLs are checked in, so you do not need OpenSCAD to print this.
 |---|---|
 | [`cliptest-front.stl`](cliptest-front.stl) | wall slice with groove and pry slot |
 | [`cliptest-back.stl`](cliptest-back.stl) | lid slice with one sprung tab |
-| [`front.stl`](front.stl) | bezel, walls, board stops |
-| [`back.stl`](back.stl) | lid with rim, tabs, pegs and keyholes |
+| [`front.stl`](front.stl) | bezel, walls, board stops — cable out to the **right** |
+| [`front-usb-left.stl`](front-usb-left.stl) | the same, cable out to the **left** |
+| [`back.stl`](back.stl) | lid with rim, tabs, pegs and keyholes — fits either front |
 | [`test-frame.stl`](test-frame.stl) | board and glass fit check |
 
 To re-render after changing a parameter you need
