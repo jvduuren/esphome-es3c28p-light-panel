@@ -105,8 +105,14 @@ tab_slot    = 1.50;   // slot either side, so each tab is a cantilever
 tab_x       = 22.00;  // the two bottom tabs, at +/- this
 back_gap    = 1.20;   // air behind the tallest component
 
-pry_w       = 10.00;  // two slots, one per tab, in the bottom rear edge
+pry_w       = 10.00;  // two slots, one per tab, in the rear edge
 pry_h       = 2.00;
+// Which long edge they sit in. Both edges carry tabs, so the leverage works
+// either way; this is purely about which edge ends up facing down once the
+// panel hangs, and that is decided by the display orientation rather than by
+// anything in the model. Set on hardware: +1 was the edge that ended up
+// underneath.
+pry_edge    = 1;      // [-1, 1]
 
 /* [Fit and tolerances] */
 wall       = 2.50;
@@ -223,10 +229,11 @@ module front() {
         // exactly where the barb holds, and either tab can be freed on its
         // own. Lever here and the bottom releases; the top tabs follow as the
         // front lifts away. Bottom only, so there is one obvious way in.
-        // Bottom edge only, one opposite each of the two bottom tabs.
+        // One long edge only, one slot opposite each of that edge's two tabs.
         for (t = tabs)
-            if (t[1] < 0)
-                translate([t[0], -outer_h / 2, front_d - pry_h / 2 + eps])
+            if (t[1] == pry_edge)
+                translate([t[0], pry_edge * outer_h / 2,
+                           front_d - pry_h / 2 + eps])
                     cube([pry_w, 2 * wall + 2 * eps, pry_h], center = true);
 
         // a groove per tab
