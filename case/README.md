@@ -92,24 +92,26 @@ Moving both together puts the pocket off the glass and the board will not seat.
 
 ## Which side the cable leaves by
 
-Print either front.stl for a cable on the right, or front-usb-left.stl for one
-on the left. The lid is the same either way.
+**Turn the case over.** One front and one lid cover both, with nothing to
+choose at print time.
 
-The socket is at one end of the board, so a left-hand cable means fitting the
-board turned 180 degrees, and then the picture and the touch have to be turned
-with it. The substitutions at the top of touchpanel.yaml carry both sets of
-values; swapping them is four lines.
+Every part of the case is symmetric top to bottom, so rotating the front 180
+degrees moves the cable from one side to the other and nothing else breaks:
 
-Only the opening moves. It is mirrored left to right, which leaves top and
-bottom alone, so the pry slots stay on the underside and the keyholes still
-hang the right way up. Rotating the whole case would have moved the cable too,
-but it would have put the pry slots on top and turned the keyholes upside down.
+- the pry slots are cut in **both** long edges, so there is always a pair
+  underneath
+- the lid's rim is notched on both sides, so the cable passes either way
+- the keyholes are slotted both ways from their opening, so the panel hangs
+  either way up
 
-The lid needs nothing changed. Its rim is notched on both sides, and the
-keyholes are slotted both ways from the opening so the panel hangs either way
-up. Neither shows: the rim gap is inside the case and the keyholes face the
-wall. The front is the one part where an unused opening would be visible, so
-that one you choose.
+The socket is at one end of the board, so the board goes in turned round with
+the case. The picture and the touch then have to be turned with it: the
+substitutions at the top of touchpanel.yaml carry both sets of values, and
+swapping them is four lines.
+
+The alternative was a second front with the opening mirrored. That meant a
+choice at print time and two files to keep in step, where this costs two
+10 x 2 mm notches at the rear edge that nobody will notice.
 
 ## Printing
 
@@ -189,9 +191,8 @@ Rendered STLs are checked in, so you do not need OpenSCAD to print this.
 |---|---|
 | [`cliptest-front.stl`](cliptest-front.stl) | wall slice with groove and pry slot |
 | [`cliptest-back.stl`](cliptest-back.stl) | lid slice with one sprung tab |
-| [`front.stl`](front.stl) | bezel, walls, board stops — cable out to the **right** |
-| [`front-usb-left.stl`](front-usb-left.stl) | the same, cable out to the **left** |
-| [`back.stl`](back.stl) | lid with rim, tabs, pegs and keyholes — fits either front |
+| [`front.stl`](front.stl) | bezel, walls, board stops. Turn it over for the cable on the other side |
+| [`back.stl`](back.stl) | lid with rim, tabs, pegs and keyholes. Hangs either way up |
 | [`test-frame.stl`](test-frame.stl) | board and glass fit check |
 
 To re-render after changing a parameter you need

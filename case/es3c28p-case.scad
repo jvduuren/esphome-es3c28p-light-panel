@@ -223,10 +223,14 @@ module front() {
         // exactly where the barb holds, and either tab can be freed on its
         // own. Lever here and the bottom releases; the top tabs follow as the
         // front lifts away. Bottom only, so there is one obvious way in.
+        // On BOTH long edges, which makes the front symmetric top to bottom.
+        // Turn it 180 degrees to move the cable to the other side and there is
+        // still a slot underneath. That is what lets one front serve either
+        // hand, at the cost of two 10 x 2 mm notches at the rear edge rather
+        // than a second 12 x 7 mm USB opening in plain sight.
         for (t = tabs)
-            if (t[1] < 0)
-                translate([t[0], -outer_h / 2, front_d - pry_h / 2 + eps])
-                    cube([pry_w, 2 * wall + 2 * eps, pry_h], center = true);
+            translate([t[0], t[1] * outer_h / 2, front_d - pry_h / 2 + eps])
+                cube([pry_w, 2 * wall + 2 * eps, pry_h], center = true);
 
         // a groove per tab
         for (t = tabs)
