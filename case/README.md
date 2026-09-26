@@ -187,6 +187,7 @@ Rendered STLs are checked in, so you do not need OpenSCAD to print this.
 | [`front-usb-left.stl`](front-usb-left.stl) | the same, cable out to the **left** |
 | [`back.stl`](back.stl) | lid with rim, tabs, pegs and keyholes — fits either front |
 | [`test-frame.stl`](test-frame.stl) | board and glass fit check |
+| [`LISTING.md`](LISTING.md) | ready-to-paste description for MakerWorld or Printables |
 
 To re-render after changing a parameter you need
 [OpenSCAD](https://openscad.org/):
